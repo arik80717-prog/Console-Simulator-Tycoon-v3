@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#eceff6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гараж Консолей">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Гараж Консолей</title>
+<style>
+html{color-scheme:light dark}
+/* Layout: landscape phone app. Top status bar (date, stats, cash, time controls), left icon rail for sections,
+   a scrolling content area that flows cards into columns, a right-hand drawer for part pickers. */
+:root{
+  --bg:#eceff6; --surface:#ffffff; --surface2:#e3e8f3; --ink:#141a2e; --mute:#626d88; --line:#d3d9ea;
+  --accent:#ff5a2c; --accent-ink:#ffffff; --blue:#2c5bff; --good:#0f9d66; --warn:#d68a00; --bad:#dc3a3a;
+  --shadow:0 1px 0 rgba(20,26,46,.06),0 14px 30px -20px rgba(20,26,46,.35);
+  --display:'Arial Black','Segoe UI',system-ui,sans-serif;
+  --body:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0f1e; --surface:#141a32; --surface2:#1e2646; --ink:#e9edfb; --mute:#8d98bb; --line:#262f55;
+  --accent:#ff7448; --accent-ink:#1a0a04; --blue:#7b98ff; --good:#3fd69a; --warn:#f0b43a; --bad:#ff6b6b;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 14px 30px -20px rgba(0,0,0,.8);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b0f1e; --surface:#141a32; --surface2:#1e2646; --ink:#e9edfb; --mute:#8d98bb; --line:#262f55;
+  --accent:#ff7448; --accent-ink:#1a0a04; --blue:#7b98ff; --good:#3fd69a; --warn:#f0b43a; --bad:#ff6b6b;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 14px 30px -20px rgba(0,0,0,.8);color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font:14px/1.4 var(--body);
+  padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.ic{flex:none;display:block}
+.mono{font-family:var(--mono)}
+.mute{color:var(--mute)}.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+
+/* frame */
+.app{height:100%;max-width:1280px;margin:0 auto;display:grid;grid-template-columns:72px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:10px 12px;padding-block:8px}
+.top{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding:6px 8px 6px 6px;border-radius:20px;background:var(--surface);box-shadow:var(--shadow)}
+.iconbtn{width:40px;height:40px;border-radius:13px;border:0;background:var(--surface2);display:grid;place-items:center;flex:none}
+.t-date{min-width:0;flex:none}
+.t-date b{display:block;font:700 14px/1.1 var(--display);white-space:nowrap}
+.t-date span{font:500 10px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mute);white-space:nowrap}
+.hdl{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.strip{display:flex;gap:6px;min-width:0;overflow:hidden}
+.pill{display:inline-flex;align-items:center;gap:5px;flex:none;padding:5px 10px;border-radius:99px;background:var(--surface2);font:600 12px var(--mono);font-variant-numeric:tabular-nums}
+.pill svg{color:var(--accent)}
+.t-cash{margin-left:auto;text-align:right;flex:none}
+.t-cash b{display:block;font:700 19px/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
+.t-cash b.neg{color:var(--bad)}
+.t-cash span{font:500 10px var(--mono);color:var(--mute);white-space:nowrap}
+.tp{display:flex;gap:3px;padding:3px;border-radius:15px;background:var(--ink);flex:none}
+.tp button{width:40px;height:36px;border:0;border-radius:12px;background:transparent;color:var(--bg);display:grid;place-items:center}
+.tp button.on{background:var(--accent);color:var(--accent-ink)}
+.tp button.skip{width:auto;padding:0 10px;display:flex;gap:4px;align-items:center;font:600 11px var(--mono)}
+.rail{display:flex;flex-direction:column;gap:4px;padding:5px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow);overflow-y:auto;scrollbar-width:none;min-height:0}
+.rail::-webkit-scrollbar{display:none}
+.rail button{position:relative;flex:1 1 0;min-height:46px;border:0;background:transparent;border-radius:16px;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 9.5px var(--body)}
+.rail button.on{background:var(--surface2);color:var(--ink)}
+.rail button.on svg{color:var(--accent)}
+.rail i{position:absolute;top:3px;right:8px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font:700 10px/16px var(--mono);text-align:center;font-style:normal}
+.main{overflow-y:auto;min-height:0;min-width:0;padding-right:2px;scrollbar-width:thin}
+.page{display:flex;flex-direction:column;gap:12px}
+.cols{column-width:260px;column-gap:14px}
+.cols>*{break-inside:avoid;margin-bottom:14px}
+.cols.build{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);grid-template-areas:"art parts" "sum parts";gap:14px;align-items:start;column-width:auto}
+.cols.build>*{margin-bottom:0}
+.a-art{grid-area:art}.a-parts{grid-area:parts}.a-sum{grid-area:sum}
+.a-art .art{max-height:170px}
+
+/* content */
+.lab{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.card{background:var(--surface);border-radius:20px;padding:14px;box-shadow:var(--shadow)}
+.card h3{margin:0;font:700 15px/1.2 var(--display);letter-spacing:-.01em}
+.head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.tag{display:inline-block;font:600 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;background:var(--surface2);color:var(--mute);vertical-align:middle}
+.tag.hot{background:var(--accent);color:var(--accent-ink)}
+.tag.blue{background:var(--blue);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px 12px}
+.grid>div{min-width:0}
+.grid b{display:block;font:600 14px var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.list>*+*{border-top:1px solid var(--line)}
+.li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0}
+.li>div{min-width:0}
+.li small{display:block;color:var(--mute);font-size:12px}
+.li .v{font:600 13px var(--mono);font-variant-numeric:tabular-nums;text-align:right;flex:none}
+.note{font-size:12.5px;color:var(--mute);margin:8px 0 0}
+.sub{margin:0;color:var(--mute);font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.grow{flex:1}
+
+/* controls */
+.btn{border:0;border-radius:14px;min-height:42px;padding:0 14px;background:var(--surface2);font:600 13px var(--body);display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn.go{background:var(--accent);color:var(--accent-ink)}
+.btn.line{background:transparent;box-shadow:inset 0 0 0 2px var(--line)}
+.btn.sm{min-height:36px;padding:0 11px;border-radius:12px;font-size:12.5px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.wide{width:100%}
+.seg{position:sticky;top:0;z-index:5;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:4px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow)}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:0 0 auto;border:0;background:transparent;border-radius:12px;padding:8px 14px;font:600 12.5px var(--body);color:var(--mute);white-space:nowrap}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:0;border-radius:99px;padding:8px 13px;min-height:38px;background:var(--surface2);font:600 12.5px var(--body)}
+.chip.on{background:var(--ink);color:var(--bg)}
+.step{display:flex;align-items:center;gap:6px}
+.step b{min-width:52px;text-align:center;font:700 15px var(--mono);font-variant-numeric:tabular-nums}
+.step .btn{width:38px;padding:0}
+.meter{height:7px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .3s}
+.meter.blue i{background:var(--blue)}.meter.good i{background:var(--good)}
+.score{flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font:700 14px var(--mono);color:#fff;background:var(--warn)}
+.score.good{background:var(--good)}.score.bad{background:var(--bad)}
+.art{display:block;width:100%;height:auto;border-radius:14px;background:var(--surface2)}
+.hero{background:var(--ink);color:var(--bg);border-radius:22px;padding:14px;box-shadow:var(--shadow)}
+.hero .lab{color:inherit;opacity:.65}
+.hero big{display:block;font:700 30px/1.05 var(--display);letter-spacing:-.03em;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.hero .meter{background:rgba(255,255,255,.18)}
+.advice{display:flex;gap:12px;align-items:center;background:var(--accent);color:var(--accent-ink);border-radius:20px;padding:14px}
+.advice h3{color:inherit}.advice p{margin:2px 0 0;font-size:12.5px;opacity:.85}
+.advice .btn{background:var(--accent-ink);color:var(--accent);flex:none}
+.opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:var(--surface2);border-radius:14px;padding:10px 12px;min-height:50px}
+.opt+.opt,.opt+.optrow,.optrow+.optrow{margin-top:6px}
+.opt.on{box-shadow:inset 0 0 0 2px var(--accent)}
+.opt:disabled{opacity:.45}
+.opt .t{flex:1;min-width:0;font-weight:600}
+.opt .t small{display:block;font:500 11px var(--mono);color:var(--mute)}
+.optrow{display:flex;gap:6px;align-items:stretch}
+.optrow .opt{flex:1}
+.part{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:9px 0;min-height:48px}
+.part .k{width:92px;flex:none;font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.part .n{flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere}
+.ach{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ach>div{border-radius:14px;padding:9px 11px;font-size:11.5px;line-height:1.35;background:var(--surface2);color:var(--mute)}
+.ach>div.ok{background:var(--ink);color:var(--bg)}
+.ach b{display:block;font-size:12.5px}
+input.in,textarea{width:100%;font:500 14px var(--mono);padding:10px 12px;border:0;border-radius:12px;background:var(--surface2);color:var(--ink);min-height:42px}
+textarea{height:110px;font-size:11px}
+.switch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0}
+.sw{width:50px;height:28px;border-radius:99px;border:0;background:var(--surface2);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--mute);transition:transform .2s,background .2s}
+.sw.on{background:var(--accent)}.sw.on::after{transform:translateX(22px);background:var(--accent-ink)}
+
+/* drawer, modal, toasts */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(8,12,28,.5);display:flex;justify-content:flex-end}
+.sheet{width:min(440px,72%);height:100%;display:flex;flex-direction:column;background:var(--bg);border-radius:26px 0 0 26px;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px)) 16px;padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:calc(14px + env(safe-area-inset-top,0px))}
+.sheet .grab{display:none}
+.sbody{overflow-y:auto;min-height:0;padding-bottom:8px}
+.modal{position:fixed;inset:0;z-index:50;background:var(--bg);overflow-y:auto;display:flex;padding:calc(16px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-right,0px))}
+.modal>div{margin:auto;width:100%;max-width:640px;display:flex;flex-direction:column;gap:12px}
+.modal h1{font:700 30px/1.05 var(--display);letter-spacing:-.03em;margin:0;text-wrap:balance}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.big{font-size:52px;line-height:1}
+.toasts{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:calc(72px + env(safe-area-inset-top,0px));z-index:45;display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none;max-width:min(360px,60%)}
+.toast{padding:9px 14px;border-radius:14px;background:var(--ink);color:var(--bg);font-size:12.5px;font-weight:600;box-shadow:0 14px 30px -12px rgba(0,0,0,.5);animation:tin .25s ease-out}
+@keyframes tin{from{opacity:0;transform:translateX(10px)}}
+@media (max-width:760px){.strip .pill:nth-child(3){display:none}.t-date span{display:none}.top{gap:8px}.hdl{gap:8px}}
+@media (max-height:420px){.hero big{font-size:26px}.ttl{font-size:20px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* forced landscape: normal fixed root; on a portrait phone the whole game is rotated a quarter turn */
+#root{position:fixed;top:0;left:0;right:0;bottom:0;padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+@media (orientation:portrait) and (max-width:820px){
+  html:not(.norot) #root{right:auto;bottom:auto;width:100vh;width:100dvh;height:100vw;transform-origin:0 0;transform:translateX(100vw) rotate(90deg);
+    padding:env(safe-area-inset-right,0px) max(16px,env(safe-area-inset-bottom,0px)) env(safe-area-inset-left,0px) max(16px,env(safe-area-inset-top,0px))}
+}
+</style>
+</head>
+<body>
+<div id="root"><div class="app"><header class="top"><div class="hdl" id="hdl"></div><div class="tp" id="tp" role="group" aria-label="Время"></div></header><nav class="rail" id="rail" aria-label="Разделы"></nav><main class="main" id="main"></main></div>
+<div id="sheet"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="ov"></div></div>
+<script>
+const START=1985;
+const MON=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+const CN=['Nintando','Sego','Sonix','Atary','Xbocks','Playstashun','Neo-Geo','Famikom'];
+const GA=['Супер','Мега','Ультра','Нео','Турбо','Легендарный','Тёмный','Классический'];
+const GN=['Марьо','Соник Рашш','Зелдо','Мортал Файт','Пэкмен','Тетрикс','Файнал Фэнтэзи','Кроссфайр'];
+/* w = вес для [процессор, видеочип, память, контроллер] */
+const GENRES=[
+  {n:'Экшен',w:[1,3,1,3]},{n:'РПГ',w:[1,1,3,1]},{n:'Гонки',w:[2,3,1,3]},{n:'Головоломка',w:[1,0,1,1]},{n:'Спорт',w:[2,2,2,2]}];
+const SCOPES=[
+  {n:'Малая',cost:9000,mo:2,b:0,mm:.5},{n:'Средняя',cost:28000,mo:4,b:6,mm:1.5},{n:'Большая',cost:85000,mo:7,b:14,mm:3}];
+const MK=[{n:'Без рекламы',cost:0,m:1},{n:'Обычная',cost:8000,m:1.15},{n:'Большая',cost:25000,m:1.4}];
+/* y = год появления, uc = себестоимость в консоли, rd = цена разработки */
+const CAT=[
+ {k:'cpu',n:'Процессор',items:[
+  {n:'ZX-8 · 8 бит',y:1985,uc:10,rd:5000},{n:'ZX-16 · 16 бит',y:1988,uc:18,rd:9000},{n:'RISC-32 · 32 бита',y:1992,uc:30,rd:16000},
+  {n:'Vortex-64 · 64 бита',y:1996,uc:48,rd:28000},{n:'Quad · 4 ядра',y:2000,uc:75,rd:45000},{n:'Hexa · 6 ядер',y:2004,uc:110,rd:70000},{n:'Octa · 8 ядер',y:2009,uc:150,rd:100000}]},
+ {k:'gpu',n:'Видеочип',items:[
+  {n:'Тайловый чип',y:1985,uc:10,rd:5000},{n:'Спрайтовый 16 бит',y:1989,uc:20,rd:10000},{n:'3D-ускоритель',y:1993,uc:34,rd:18000},
+  {n:'Шейдерный GPU',y:1997,uc:55,rd:30000},{n:'HD-графика',y:2001,uc:85,rd:48000},{n:'Унифицированный GPU',y:2005,uc:120,rd:72000},{n:'Трассировка лучей',y:2010,uc:170,rd:105000}]},
+ {k:'ram',n:'Оперативная память',items:[
+  {n:'8 КБ',y:1985,uc:6,rd:3000},{n:'64 КБ',y:1988,uc:12,rd:6000},{n:'2 МБ',y:1991,uc:22,rd:11000},
+  {n:'16 МБ',y:1995,uc:36,rd:19000},{n:'128 МБ',y:1999,uc:55,rd:30000},{n:'512 МБ',y:2003,uc:80,rd:48000},{n:'4 ГБ',y:2008,uc:115,rd:75000}]},
+ {k:'media',n:'Носитель игр',items:[
+  {n:'Картридж ROM',y:1985,uc:4,rd:3000},{n:'Картридж с батарейкой',y:1987,uc:10,rd:6000},{n:'CD-ROM',y:1993,uc:18,rd:10000},
+  {n:'DVD-диск',y:1997,uc:26,rd:16000},{n:'Флеш-карта',y:2001,uc:34,rd:24000},{n:'Blu-ray',y:2005,uc:48,rd:36000},{n:'SSD-модуль',y:2011,uc:70,rd:60000}]},
+ {k:'ctl',n:'Контроллер',items:[
+  {n:'Джойстик',y:1985,uc:3,rd:2000},{n:'Крестовина, 2 кнопки',y:1985,uc:6,rd:4000},{n:'Геймпад, 6 кнопок',y:1989,uc:10,rd:7000},
+  {n:'Геймпад с плечевыми',y:1993,uc:15,rd:11000},{n:'Аналог и вибро',y:1997,uc:22,rd:16000},{n:'Датчики движения',y:2005,uc:32,rd:26000},{n:'Сенсорный экран',y:2010,uc:45,rd:40000}]},
+ {k:'des',n:'Корпус',items:[
+  {n:'Строгий',y:1985,uc:5,rd:2000,ap:0},{n:'Стильный',y:1985,uc:14,rd:6000,ap:.1},{n:'Премиум',y:1985,uc:30,rd:14000,ap:.22},{n:'Алюминий',y:1995,uc:45,rd:22000,ap:.32},{n:'Лимитированный',y:2005,uc:70,rd:40000,ap:.45}]},
+ {k:'snd',n:'Звук',items:[
+  {n:'Пищалка',y:1985,uc:2,rd:1000},{n:'Синтезатор, 4 канала',y:1988,uc:6,rd:4000},{n:'Стерео PCM',y:1993,uc:12,rd:9000},
+  {n:'Объёмный звук',y:2000,uc:22,rd:20000},{n:'Dolby Surround',y:2007,uc:35,rd:38000}]}
+];
+const T=['Квантовый','Нейронный','Фотонный','Плазменный','Орбитальный','Гравитонный','Тахионный','Мультиверсный'];
+const REN={cpu:['Zylog Z81 · 8 бит','Motorolo 68000 · 16 бит','Intelo 486 · 32 бита','MIPZ R4400 · 64 бита','Athlonn XP · 1 ГГц','Core Duo T2300','Ryzor 7 · 8 ядер'],
+gpu:['Atary TIA','Yamaho V9938','3dFX Voodoo','NVidya TNT2','RadeOn 8500 HD','GeForz 8800 GTX','GeForz RTX 2080'],
+media:['Картридж ROM','Картридж Save-Batt','CD-ROM Mega','DVD-9','SD-карта Pro','Blu-Ray BD-50','SSD NVMe M.2'],
+ctl:['Джойстик Atary 2600','Крестовина Famikom','Геймпад Mega Drive 6B','Геймпад SuperPad SNS','Аналог N65 Rumble','Wimote Motion','Switchy Touch'],
+des:['Корпус Classic Grey','Корпус Retro Wood','Корпус Premium Black','Корпус Alu-Silver','Корпус Limited Gold'],
+snd:['Beeper PSG','Yamaho YM2612','Stereo Sound Blaster','Dolbi Digital 5.1','DTS HD-Master']};
+Object.entries(REN).forEach(([k,a])=>{const it=CAT.find(c=>c.k===k).items;a.forEach((n,i)=>{if(it[i])it[i].n=n})});
+const NG={cpu:i=>`${['Intelo','Ryzor'][i%2]} ${['Pentix','Core i','Zeon','Aero'][i%4]} ${i+5}-${1000+i*350}`,
+gpu:i=>`${['NVidya GeForz','RadeOn RX','Arcx'][i%3]} ${(i+30)*100}`,
+ram:i=>{const v=8*Math.pow(2,i),u=['ГБ','ТБ','ПБ','ЭБ','ЗБ','ИБ'],e=Math.min(5,Math.floor(Math.log(v)/Math.log(1024)));return `Память ${Math.round(v/Math.pow(1024,e))} ${u[e]} DDR${5+Math.floor(i/2)}`},
+media:i=>`${['SSD NVMe','Кристалл Crystal','Голодиск HVD','Стрим-ключ'][i%4]} ${(i+2)*2} ТБ`,
+ctl:i=>`Геймпад ${['DualShok','Xboxer','ProCon','Switchy'][i%4]} ${i+5}`,
+des:i=>`Корпус ${['Slim','Carbon','Titan','Aero','Neon'][i%5]} ${i+3}`,
+snd:i=>`${['Dolbi Atmoz','DTS:X Pro','Sonic 3D'][i%3]} ${i+7}.${i%3+1}`};
+/* до 2200 года новое поколение каждой детали раз в 9 лет */
+[['cpu',2013,'Ядро',170,110000],['gpu',2014,'Видеоядро',190,120000],['ram',2013,'Память',125,85000],['media',2014,'Носитель',80,70000],['ctl',2014,'Контроллер',50,50000],['des',2014,'Корпус',80,45000],['snd',2016,'Аудио',40,45000]].forEach(([k,y0,w,uc,rd])=>{
+  const it=CAT.find(c=>c.k===k).items;
+  for(let i=0;i<21;i++){const o={n:NG[k](i),y:y0+i*9,uc:Math.round(uc*Math.pow(1.045,i)),rd:Math.round(rd*Math.pow(1.06,i))};if(k==='des')o.ap=Math.min(1,.5+i*.03);it.push(o)}
+});
+const DIFF=[{n:'Лёгкая',cash:150000,exp:.8,sale:1.2},{n:'Обычная',cash:100000,exp:1,sale:1},{n:'Сложная',cash:60000,exp:1.3,sale:.85},{n:'Песочница',cash:500000,exp:.5,sale:1.2},{n:'Хардкор',cash:50000,exp:1.5,sale:.8}];
+const KEY='garage-console-v2';
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const money=n=>(n<0?'−':'')+Math.abs(Math.round(n)).toLocaleString('ru-RU')+' $';
+const fmt=n=>Math.round(n).toLocaleString('ru-RU');
+const label=m=>MON[m%12]+' '+(START+Math.floor(m/12));
+const yr=()=>START+Math.floor(S.m/12);
+const itm=(k,i)=>CAT.find(c=>c.k===k).items[i];
+const sumF=(d,f)=>CAT.reduce((s,c)=>s+itm(c.k,d[c.k])[f],0);
+const rdCost=d=>Math.round((10000+sumF(d,'rd'))*(1-.05*S.up.lab));
+const unitCost=d=>15+sumF(d,'uc');
+const power=d=>d.cpu+d.gpu+d.ram+3;
+const appeal=d=>Math.min(2.2,1+d.ctl*.06+d.media*.05+itm('des',d.des).ap+d.snd*.03);
+const mktPrice=d=>70+power(d)*28+(d.ctl+d.media)*8+d.snd*5+itm('des',d.des).ap*100;
+const rdMonths=d=>Math.min(18,3+Math.floor((d.cpu+d.gpu+d.ram+d.media+d.ctl+d.des+d.snd)/3));
+const expected=()=>3.5+S.m/30;
+const newCName=()=>pick(CN)+' '+Math.floor(rnd(2,99));
+const newGName=()=>pick(GA)+' '+pick(GN);
+const $=s=>document.querySelector(s);
+let S, timer, menu=true, cn=false;
+function fresh(df=1){
+  const cd={cpu:0,gpu:0,ram:0,media:0,ctl:0,des:0,snd:0,price:150,name:newCName()};
+  return {set:{snd:1,vib:1},xp:0,day:1,dc:0,m:0,cash:DIFF[df].cash,diff:df,offers:[],cprj:[],tp:{n:0,rev:0},br:20,res:{},awards:[],loan:0,up:{mk:0,fab:0,qa:0,lab:0,off:0},st:{},ach:{},hist:[],camp:{},hot:{g:0,left:12},fans:0,devs:1,cons:[],games:[],proj:[],rd:null,id:1,tab:'h',speed:0,over:false,won:false,net:0,
+    log:[{m:0,t:'Гараж арендован. Пора делать первую консоль.'}],
+    cd,gd:{genre:0,scope:0,con:null,mk:0,name:newGName()}};
+}
+function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.cd&&o.cd.ram!==undefined&&o.gd){o.cd.snd??=0;o.cons.forEach(c=>{c.snd??=0});o.speed=0;o.diff??=1;o.offers??=[];o.cprj??=[];o.tp??={n:0,rev:0};o.loan??=0;o.br??=20;o.awards??=[];if(!o.res){o.res={};CAT.forEach(k=>k.items.forEach((it,i)=>{if(it.y<=START+Math.floor(o.m/12))o.res[k.k+i]=1}))}o.up??={mk:0,fab:0,qa:0,lab:0};o.ach??={};o.hist??=[];o.camp??={};o.hot??={g:0,left:12};o.set??={snd:1,vib:1};o.day??=1;o.dc??=Math.round(o.m*30.44);o.xp??=0;o.up.off??=0;o.st??={};o.short??=0;o.ypr??=0;o.dil??=0;o.quest??=null;if(!['h','c','g','w','s'].includes(o.tab))o.tab='h';return o}}}catch(e){}return fresh()}
+function hasSave(){try{const o=JSON.parse(localStorage.getItem(KEY));return !!(o&&o.cd&&!o.over)}catch(e){return false}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function say(t){S.log.unshift({m:S.m,d:S.day,t});S.log.length=Math.min(S.log.length,40);if(typeof toast==='function')toast(t)}
+
+function release(p){
+  const c=S.cons.find(x=>x.id===p.con);
+  const g={id:S.id++,name:p.name,genre:p.genre,con:p.con,q:p.q,mk:p.mk,rel:S.m,units:0,rev:0,last:0};
+  S.games.push(g);
+  S.br+=Math.round(p.q/8);const dF=Math.round((p.q-50)*8*p.mk); S.fans=Math.max(0,S.fans+dF);
+  say('Вышла «'+g.name+'» для '+c.name+'. Оценка прессы: '+(p.q/10).toFixed(1)+'. Фанатов '+(dF>0?'+':'')+fmt(dF)+'.');
+}
+function monthTick(){
+  if(S.over)return;
+  S.m++;
+  if(S.m%12===5&&S.cons.length&&S.xp!==yr()&&!S.expo){S.expo={y:yr()};setSpeed(0)}
+  let inc=0, exp=salary();
+  if(S.rd){
+    S.rd.left--;
+    if(S.rd.left<=0){
+      const d=S.rd, c={id:S.id++,name:d.name,launch:S.m,sold:0,last:0,price:d.price};
+      CAT.forEach(k=>{c[k.k]=d[k.k]});
+      c.power=power(d); c.cost=unitCost(d); c.ap=appeal(d); c.mp=mktPrice(d); c.roy=18+(d.media+1)*4;
+      S.cons.push(c);
+      say('Консоль «'+d.name+'» поступила в продажу.');
+      S.rd=null; S.cd.name=newCName();
+    }
+  }
+  S.proj=S.proj.filter(p=>{p.left--;if(p.left>0)return true;release(p);return false});
+  S.offers=S.offers.filter(o=>--o.exp>0);
+  S.cprj=S.cprj.filter(p=>{p.left--;if(p.left>0)return true;releaseEx(p);return false});
+  S.games=S.games.filter(g=>!g.third||S.m-g.rel<36);
+  S.cons.forEach(c=>{if(!c.off&&Math.random()<Math.min(.7,.04+c.sold/150000)){S.games.push({id:S.id++,name:newGName(),genre:Math.floor(rnd(0,5)),con:c.id,q:clampQ(rnd(38,82)+(S.fans>5000?4:0)),mk:.6,rel:S.m,units:0,rev:0,last:0,third:true});S.tp.n++}});
+  if(S.cons.length&&S.offers.length<3&&Math.random()<.22)newOffer();
+  S.cons.forEach(c=>{
+    if(c.off){c.last=0;return}
+    const n=S.games.filter(g=>g.con===c.id), avg=n.length?n.reduce((s,g)=>s+g.q,0)/n.length:0;
+    const at=Math.min(1.5,Math.max(.25,c.power/expected()));
+    const pf=Math.min(2.2,Math.pow(c.mp/c.price,1.4));
+    const gf=.4+Math.min(1.4,n.reduce((s,g)=>s+(g.ex?3:g.third?.7:1),0)*.12)*(.6+avg/150);
+    let u=Math.floor(800*Math.pow(at,1.5)*pf*gf*c.ap*(1+Math.min(S.fans,9000)/3000)*rnd(.85,1.15)*DIFF[S.diff].sale*SEA[S.m%12]*(1+.08*S.up.mk)*(S.camp[c.id]>0?1.3:1)*lifeF(c)*compF()*satF(c)); u=Math.min(u,Math.round(2500*(1+S.m/48)));
+    c.last=u; c.peak=Math.max(c.peak||0,u); c.low=(S.m-c.launch>=18&&u<Math.max(40,c.peak*.06))?(c.low||0)+1:0; if(c.low>=3){c.off=true;say('Консоль «'+c.name+'» снята с продажи: спрос упал.')} (c.h=c.h||[]).push(u); c.ys=(c.ys||0)+u; if(c.h.length>24)c.h.shift(); S.fans+=Math.round(u*.015*(S.res.t3?1.25:1)); c.sold+=u; inc+=u*(c.price-c.cost*costMul());
+  });
+  S.games.forEach(g=>{
+    const c=S.cons.find(x=>x.id===g.con);
+    let u=Math.floor(c.sold*.035*Math.pow(g.q/55,2.2)*Math.exp(-(S.m-g.rel)/7)*g.mk*(g.genre===S.hot.g?1.3:1)); u=Math.min(u,Math.round(30000*(1+S.m/60)));
+    g.units+=u; if(!g.third)S.fans+=Math.round(u*.01); g.rev+=u*c.roy; if(g.third)S.tp.rev+=u*c.roy; g.last=u; inc+=u*c.roy*(S.res.t6?1.15:1);
+  });
+  inc+=ev()-S.loan*.015-risk(); S.fans=Math.max(0,Math.round(S.fans*.995));
+  S.net=inc-exp; S.ypr=(S.ypr||0)+S.net; S.cash+=S.net;
+  S.br+=brainRate(); if(S.m%12===0)ceremony(); S.hist.push(Math.round(S.cash)); if(S.hist.length>120)S.hist.shift();
+  for(const k in S.camp)if(S.camp[k]>0)S.camp[k]--;
+  if(--S.hot.left<=0){S.hot={g:Math.floor(rnd(0,5)),left:12};say('Тренд рынка: «'+GENRES[S.hot.g].n+'» (+30% к продажам игр).')}
+  if(S.god&&S.cash<100000)S.cash=100000;
+  checkAch();
+  if(S.cash<-20000&&S.diff!==3){S.over=true;setSpeed(0);say('Студия обанкротилась.')}
+  save(); render();
+}
+/* ---- усложнение ---- */
+const salary=()=>(S.devs*4500+2000)*DIFF[S.diff].exp*(1+S.m/12*.012);
+const costMul=()=>(1-.06*S.up.fab-(S.res.t2?.08:0))*(S.short>0?1.25:1);
+const lifeF=c=>{const a=S.m-c.launch;return a<4?.75+a*.0625:a<40?1:Math.max(.3,1-(a-40)/70)};
+const satF=c=>1/(1+c.sold/(250000*(1+S.m/60)));
+const compF=()=>1/(1+.01*(S.m/12)*(S.diff===4?1.6:1));
+const DIL=[
+{t:'Дефицит чипов',d:'Поставщики срывают сроки. Себестоимость вот-вот вырастет.',o:[['Купить запас · 20 000 $',()=>{S.cash-=20000}],['Переждать: себестоимость +25% на 6 мес.',()=>{S.short=6}]]},
+{t:'Утечка прототипа',d:'Фото вашей новой консоли разошлись по форумам.',o:[['Нанять юристов · 15 000 $',()=>{S.cash-=15000}],['Пиар-акция · 8 000 $, фанатов +300',()=>{S.cash-=8000;S.fans+=300}],['Игнорировать: фанатов −300',()=>{S.fans=Math.max(0,S.fans-300)}]]},
+{t:'Забастовка',d:'Разработчики требуют повысить зарплаты.',o:[['Поднять зарплаты · 12 000 $',()=>{S.cash-=12000}],['Отказать: уйдёт 1 разработчик',()=>{if(S.devs>1)S.devs--;S.fans=Math.max(0,S.fans-100)}]]},
+{t:'Патентный иск',d:'Патентный тролль требует денег за «нарушение».',o:[['Заплатить · 25 000 $',()=>{S.cash-=25000}],['Судиться: 50% победа, иначе −60 000 $',()=>{if(Math.random()<.5){S.fans+=200;say('Суд выигран. Фанатов +200.')}else{S.cash-=60000;say('Суд проигран: −60 000 $.')}}]]},
+{t:'Инвестор',d:'Фонд готов вложить деньги под процент.',o:[['Взять 100 000 $ в долг',()=>{S.cash+=100000;S.loan+=100000}],['Отказаться',()=>{}]]}];
+function DILV(){const e=DIL[S.dil-1];return `<div class="modal"><div><span class="lab">Событие</span><h1>${e.t}</h1><p class="sub" style="margin:0">${e.d}</p><div class="opts">${e.o.map((o,i)=>`<button class="btn ${i===0?'go':''} wide" data-a="dil" data-v="${i}">${o[0]}</button>`).join('')}</div></div></div>`}
+const QT=[
+{n:'Продайте {g} консолей',g:()=>Math.round(3000*(1+S.m/36)),b:()=>sold(),p:q=>sold()-q.b,rw:'+25 🧠 и +20 000 $',f:()=>{S.br+=25;S.cash+=20000}},
+{n:'Выпустите игру с оценкой 8+',g:()=>80,b:()=>S.m,p:q=>Math.max(0,...ownG().filter(g=>g.rel>=q.b).map(g=>g.q)),rw:'+600 фанатов',f:()=>{S.fans+=600}},
+{n:'Привлеките {g} новых фанатов',g:()=>Math.round(S.fans*.3+300),b:()=>S.fans,p:q=>S.fans-q.b,rw:'+40 000 $',f:()=>{S.cash+=40000}},
+{n:'Увеличьте капитал на {g} $',g:()=>Math.round(Math.max(S.cash,0)*.4+30000),b:()=>S.cash,p:q=>S.cash-q.b,rw:'+30 🧠',f:()=>{S.br+=30}}];
+function questTick(){
+  const q=S.quest;
+  if(!q){if(S.m>=6&&S.cons.length&&Math.random()<.3){const i=Math.floor(rnd(0,QT.length));S.quest={i,g:QT[i].g(),b:QT[i].b(),end:S.m+12};say('📋 Новое задание: '+QT[i].n.replace('{g}',fmt(S.quest.g))+'.')}return}
+  const T=QT[q.i];
+  if(T.p(q)>=q.g){T.f();say('✅ Задание выполнено! '+T.rw+'.');S.quest=null;bump('quests')}
+  else if(S.m>=q.end){S.fans=Math.max(0,S.fans-150);say('❌ Задание провалено: фанатов −150.');S.quest=null}
+}
+function risk(){
+  if(S.diff===3)return 0;
+  let c=0;const H=S.diff===4?1.6:1;
+  if(S.short>0)S.short--;
+  if(S.m%12===0){const t=Math.round((S.ypr||0)*.12*H);S.ypr=0;if(t>0){c+=t;say('Налоги за год: '+money(t)+'.')}}
+  S.cons.forEach(k=>{if(!k.off&&S.m-k.launch<10&&Math.random()<.02*H*Math.max(.3,1-.15*S.up.qa)){const r=Math.round(k.last*k.price*.4);c+=r;say('Отзыв партии «'+k.name+'»: '+money(r)+'.')}});
+  if(!S.dil&&S.cons.length&&Math.random()<.06*H){S.dil=Math.floor(rnd(0,DIL.length))+1;setSpeed(0)}
+  questTick();
+  return c;
+}
+function questCard(){
+  let h='';
+  if(S.short>0)h+=`<div class="card"><div class="head"><h3>⚠ Дефицит чипов</h3></div><p class="sub" style="margin:0">Себестоимость консолей +25% ещё ${S.short} мес.</p></div>`;
+  const q=S.quest;if(!q)return h;
+  const T=QT[q.i],p=Math.max(0,T.p(q));
+  return h+`<div class="card"><div class="head"><h3>📋 Задание</h3><span class="lab">${Math.max(0,q.end-S.m)} мес.</span></div><p style="margin:0 0 8px">${T.n.replace('{g}',fmt(q.g))}</p>${meter(Math.min(100,100*p/q.g))}<p class="sub" style="margin:8px 0 0">Награда: ${T.rw}</p></div>`;
+}
+const TECH=[{k:'t1',n:'Оптимизация кода',d:'Оценка игр +3',c:60},{k:'t2',n:'Массовое производство',d:'Себестоимость −8%',c:90},{k:'t3',n:'Фанатские форумы',d:'Фанатов от продаж +25%',c:80},{k:'t4',n:'Исследовательские гранты',d:'Приток мозгов +30%',c:120},{k:'t5',n:'Эксклюзивные связи',d:'Контракты дешевле на 20%',c:100},{k:'t6',n:'Облачные сервисы',d:'Роялти +15%',c:150}];
+const isRes=(k,i)=>i===0||!!S.res[k+i];
+const bcost=i=>Math.round(3+i*i*.3);
+const brainRate=()=>Math.round((1+S.devs*1.2+S.up.lab*3)*(S.res.t4?1.3:1));
+function runCheat(c){
+  const C={money:()=>S.cash+=1e6,brain:()=>S.br+=1000,fans:()=>S.fans+=10000,
+   tech:()=>{CAT.forEach(k=>k.items.forEach((it,i)=>{if(it.y<=yr())S.res[k.k+i]=1}));TECH.forEach(t=>S.res[t.k]=1)},
+   upgrade:()=>UPS.forEach(u=>S.up[u.k]=5),year1:()=>S.m+=12,year:()=>S.m+=60,debt:()=>S.loan=0};
+  if(S.dev)Object.assign(C,{finish:()=>{S.proj.forEach(p=>p.left=1);S.cprj.forEach(p=>p.left=1);if(S.rd)S.rd.left=1},
+   offer:()=>{if(S.cons.length)newOffer()},god:()=>S.god=!S.god,dbg:()=>S.dbg=!S.dbg,sci0:()=>{S.res={}}});
+  if(C[c]){C[c]();S.cheated=true;say('Чит: '+c+'.')}else say('Неизвестный код.')
+}
+const RIV=[['Nintando',150000,.9],['Sego',110000,1.1],['Sonix',90000,1.25],['Atary',60000,.7]];
+function ceremony(){
+  const y=yr()-1, mine=[...S.cons].sort((a,b)=>(b.ys||0)-(a.ys||0))[0];
+  if(!mine||!mine.ys){S.cons.forEach(c=>c.ys=0);return}
+  const nom=[{n:mine.name,u:mine.ys,me:1}];
+  for(let i=0;i<3;i++)nom.push({n:pick(CN)+' '+Math.floor(rnd(2,99)),u:Math.round(rnd(.4,1.3)*9000*(1+S.m/80))});
+  nom.sort((a,b)=>b.u-a.u);
+  const bg=S.games.filter(g=>g.rel>=S.m-12).sort((a,b)=>b.q-a.q)[0], win=!!nom[0].me;
+  if(win){S.cash+=20000;S.fans+=500;S.br+=30}
+  S.awards.push({y,n:nom[0].n,me:win,u:nom[0].u});
+  S.cer={y,nom,win,step:0,game:bg?{n:bg.name,q:bg.q,third:!!bg.third,units:bg.units}:null};
+  S.cons.forEach(c=>c.ys=0);setSpeed(0);say('🏆 Церемония «Консоль года '+y+'».')
+}
+const TIERS=[[0,'Никому не известны'],[500,'Местная знаменитость'],[3000,'Известный бренд'],[10000,'Звезда индустрии'],[30000,'Легенда'],[100000,'Икона игр']];
+const REAL=[['Atari 2600',1977,30],['NES',1983,61.9],['Sega Genesis',1988,30.8],['Game Boy',1989,118.7],['SNES',1990,49.1],['PlayStation',1994,102.5],['Nintendo 64',1996,32.9],['Dreamcast',1998,9.1],['PlayStation 2',2000,155],['Game Boy Advance',2001,81.5],['Xbox',2001,24],['GameCube',2001,21.7],['Nintendo DS',2004,154],['Xbox 360',2005,84],['PlayStation 3',2006,87.4],['Wii',2006,101.6],['PlayStation 4',2013,117],['Xbox One',2013,58],['Nintendo Switch',2017,150],['PlayStation 5',2020,90]];
+const SEA=[.8,.85,.95,.95,1,1,1,1,1.05,1.1,1.25,1.6];
+const UPS=[{k:'mk',n:'Маркетинг-отдел',d:'Спрос на консоли +8% за уровень',b:40000},{k:'fab',n:'Фабрика',d:'Себестоимость −6% за уровень',b:60000},{k:'qa',n:'Отдел QA',d:'Оценка игр +2 за уровень',b:50000},{k:'lab',n:'Лаборатория',d:'Разработка консолей −5% за уровень',b:70000},{k:'off',n:'Офис',d:'+4 места в команде за уровень',b:80000}];
+const sold=()=>S.cons.reduce((a,c)=>a+c.sold,0);
+const ACH=[
+ {id:'a1',n:'Первый шаг',d:'Выпустить консоль',f:()=>S.cons.length>=1},
+ {id:'a2',n:'Линейка',d:'3 консоли',f:()=>S.cons.length>=3},
+ {id:'a3',n:'Миллионер',d:'1 000 000 $ на счету',f:()=>S.cash>=1e6},
+ {id:'a4',n:'Фан-клуб',d:'1 000 фанатов',f:()=>S.fans>=1000},
+ {id:'a5',n:'Культ',d:'10 000 фанатов',f:()=>S.fans>=10000},
+ {id:'a6',n:'Шедевр',d:'Игра с оценкой 9+',f:()=>S.games.some(g=>!g.third&&g.q>=90)},
+ {id:'a7',n:'Только у нас',d:'Выпустить эксклюзив',f:()=>S.games.some(g=>g.ex)},
+ {id:'a8',n:'Миллион консолей',d:'Продать 1 000 000 шт.',f:()=>sold()>=1e6},
+ {id:'a9',n:'Полная команда',d:'12 разработчиков',f:()=>S.devs>=12},
+ {id:'b1',n:'Новый век',d:'Дожить до 2000 года',f:()=>yr()>=2000},
+ {id:'b2',n:'Из будущего',d:'Дожить до 2100 года',f:()=>yr()>=2100},
+ {id:'b3',n:'Прокачка',d:'Все улучшения студии на 3+',f:()=>UPS.every(u=>S.up[u.k]>=3)},
+];
+ACH.push({id:'c1',n:'Академик',d:'Изучить 20 технологий',f:()=>Object.keys(S.res).length>=20});
+function checkAch(){const n=[];ACH.forEach(a=>{if(S.ach[a.id]===undefined&&a.f()){S.ach[a.id]=S.m;S.br+=3;n.push(a.n)}});if(n.length&&n.length<=2)n.forEach(x=>say('🏆 Достижение: «'+x+'».'));else if(n.length)say('🏆 Достижения: «'+n[0]+'», «'+n[1]+'» и ещё '+(n.length-2)+'.')}
+function newOffer(){const A=S.cons.filter(x=>!x.off);if(!A.length)return;const c=pick(A),q=clampQ(rnd(55,94));S.offers.push({id:S.id++,name:newGName(),studio:pick(['Нордик','Ржавая Шестерня','Лунный Лис','Три Волны','Хмурый Кот']),genre:Math.floor(rnd(0,5)),con:c.id,q,cost:Math.round((12000+(q-50)*1100)*(S.res.t5?.8:1)/1000)*1000,mo:Math.round(rnd(3,7)),exp:4})}
+function releaseEx(p){
+  S.games.push({id:S.id++,name:p.name,genre:p.genre,con:p.con,q:p.q,mk:1.6,rel:S.m,units:0,rev:0,last:0,ex:true});
+  const f=Math.round((p.q-50)*10);S.fans+=f;S.br+=Math.round(p.q/6);say('Эксклюзив «'+p.name+'» вышел на вашей консоли. Оценка '+(p.q/10).toFixed(1)+', фанатов +'+fmt(f)+'.')
+}
+function ev(){
+  if(!S.cons.length||Math.random()>.07)return 0;
+  const r=Math.floor(Math.random()*4);
+  if(r===0){const f=Math.round(rnd(200,600));S.fans+=f;say('Блогер раскритиковал конкурентов и похвалил вас. Фанатов +'+f+'.');return 0}
+  if(r===1){say('Государственный грант для малого бизнеса: +'+money(15000)+'.');return 15000}
+  if(r===2){say('Брак в партии консолей. Расходы на гарантию: '+money(8000)+'.');return -8000}
+  const l=Math.round(S.fans*.05);S.fans-=l;say('Конкурент выпустил громкий хит. Фанатов −'+fmt(l)+'.');return 0
+}
+function setSpeed(n){S.speed=n;clearInterval(timer);if(n)timer=setInterval(tick,n===1?110:n===3?6:40)}
+
+function act0(a,v){
+  if(a==='tab')S.tab=v;
+  else if(a==='speed')setSpeed(+v);
+  else if(a==='next'){if(S.diff===3)skipMonth()}
+  else if(a==='part'){const[k,i]=v.split(':');if(itm(k,+i).y<=yr()&&isRes(k,+i))S.cd[k]=+i}
+  else if(a==='price'){S.cd.price=Math.max(50,S.cd.price+ +v)}
+  else if(a==='mkt')S.cd.price=Math.round(mktPrice(S.cd)/10)*10;
+  else if(a==='cname')S.cd.name=newCName();
+  else if(a==='rd'){const c=rdCost(S.cd);if(!S.rd&&S.cash>=c){S.cash-=c;const mo=rdMonths(S.cd);S.rd={...S.cd,left:mo,total:mo};say('Начата разработка «'+S.cd.name+'».')}}
+  else if(a==='cp'){const[id,d]=v.split(':');const c=S.cons.find(x=>x.id===+id);if(c)c.price=Math.max(50,c.price+ +d)}
+  else if(a==='genre')S.gd.genre=+v;
+  else if(a==='scope')S.gd.scope=+v;
+  else if(a==='gmk')S.gd.mk=+v;
+  else if(a==='gcon')S.gd.con=+v;
+  else if(a==='gname')S.gd.name=newGName();
+  else if(a==='mkgame')makeGame();
+  else if(a==='hire'){if(S.devs<maxDevs()&&S.cash>=8000){S.cash-=8000;S.devs++;bump('hires');say('Нанят разработчик. В команде: '+S.devs+'.')}}
+  else if(a==='res'){const[k,i]=v.split(':');if(i==='t'){const t=TECH.find(x=>x.k===k);if(t&&!S.res[k]&&S.br>=t.c){S.br-=t.c;S.res[k]=1;say('Изучено: '+t.n+'.')}}else{const it=itm(k,+i),c=bcost(+i);if(it.y<=yr()&&!isRes(k,+i)&&S.br>=c){S.br-=c;S.res[k+i]=1;say('Изучено: '+it.n+'.')}}}
+  else if(a==='off'){const c=S.cons.find(x=>x.id===+v);if(c){c.off=true;say('Консоль «'+c.name+'» снята с продажи.')}}
+  else if(a==='on'){const c=S.cons.find(x=>x.id===+v);if(c&&S.cash>=5000){S.cash-=5000;c.off=false;c.low=0;c.peak=0;say('Консоль «'+c.name+'» возвращена в продажу.')}}
+  else if(a==='cer'){if(S.cer.step<2)S.cer.step++;else S.cer=null}
+  else if(a==='io')menu='io';
+  else if(a==='imp'){try{const o=JSON.parse(decodeURIComponent(escape(atob($('#sv').value.trim()))));if(o&&o.cd&&o.gd){localStorage.setItem(KEY,JSON.stringify(o));setSpeed(0);S=load();S.speed=0;menu=false}}catch(e){}}
+  else if(a==='ch'&&S.diff===3)runCheat(v);
+  else if(a==='dev'&&S.diff===3)S.dev=!S.dev;
+  else if(a==='cheat'&&S.diff===3){const el=$('#cheat'),c=el?el.value.trim().toLowerCase():'';if(el){el.value='';el.blur()}
+    runCheat(c)}
+  else if(a==='camp'){if(S.cash>=15000&&!(S.camp[v]>0)){S.cash-=15000;S.camp[v]=4;bump('camps');say('Рекламная кампания запущена: спрос +30% на 4 мес.')}}
+  else if(a==='loan'){if(S.loan<200000){S.loan+=50000;S.cash+=50000;bump('loans');say('Взят кредит 50 000 $.')}}
+  else if(a==='repay'){if(S.loan>0&&S.cash>=50000){S.loan-=50000;S.cash-=50000;bump('repaid');say('Погашено 50 000 $ кредита.')}}
+  else if(a==='up'){const u=UPS.find(x=>x.k===v),c=u.b*(S.up[v]+1);if(S.up[v]<UPMAX(v)&&S.cash>=c){S.cash-=c;S.up[v]++;say('Улучшение: '+u.n+' до уровня '+S.up[v]+'.')}}
+  else if(a==='fire'){if(S.devs>1&&S.proj.length+S.cprj.length<Math.ceil((S.devs-1)/2)){S.devs--;say('Разработчик уволен. В команде: '+S.devs+'.')}}
+  else if(a==='cont')menu=false;
+  else if(a==='menu'){setSpeed(0);menu=true;cn=false}
+  else if(a==='newg'){if(hasSave()&&!cn){cn=true;render();return}cn=false;menu='diff'}
+  else if(a==='start'){cn=false;setSpeed(0);S=fresh(+v);save();menu=false}
+  else if(a==='back')menu=true;
+  else if(a==='acc'){const i=S.offers.findIndex(o=>o.id===+v),o=S.offers[i];if(o&&S.cash>=o.cost){S.cash-=o.cost;S.offers.splice(i,1);S.cprj.push({...o,left:o.mo,total:o.mo});bump('signed');say('Подписан эксклюзивный контракт на «'+o.name+'».')}}
+  else if(a==='dec')S.offers=S.offers.filter(o=>o.id!==+v);
+  else if(a==='reset'){setSpeed(0);menu='diff'}
+  save(); render();
+}
+function baseQ(g,c){
+  const sc=SCOPES[g.scope], w=GENRES[g.genre].w, t=[c.cpu+1,c.gpu+1,c.ram+1,c.ctl+1];
+  const fit=w.reduce((s,x,i)=>s+x*t[i],0)/w.reduce((a,b)=>a+b,0)*4;
+  return 35+(S.res.t1?3:0)+S.up.qa*2+(Math.min(S.devs,12)*3+Math.max(0,S.devs-12))+sc.b+fit+c.media*sc.mm;
+}
+const clampQ=x=>Math.min(98,Math.max(20,Math.round(x)));
+function gameCost(g){return SCOPES[g.scope].cost+MK[g.mk].cost}
+function makeGame(){
+  const g=S.gd, cid=g.con??(S.cons[0]&&S.cons[0].id), c=S.cons.find(x=>x.id===cid);
+  if(!c||c.off||S.cash<gameCost(g)||S.proj.length>=Math.ceil(S.devs/2))return;
+  const sc=SCOPES[g.scope], mo=Math.max(1,sc.mo-Math.floor((S.devs-1)/3));
+  S.cash-=gameCost(g);
+  S.proj.push({name:g.name,genre:g.genre,con:c.id,q:clampQ(baseQ(g,c)+rnd(-8,10)),mk:MK[g.mk].m,left:mo,total:mo});
+  say('Начата работа над «'+g.name+'».'); g.name=newGName();
+}
+const DIMS=[31,28,31,30,31,30,31,31,30,31,30,31];
+const dim=m=>{const y=START+Math.floor(m/12),k=m%12;return k===1&&y%4===0&&(y%100!==0||y%400===0)?29:DIMS[k]};
+const dleft=n=>{let t=dim(S.m)-S.day+1,m=S.m;for(let i=1;i<n;i++){m++;t+=dim(m)}return t};
+const pdays=p=>Math.max(0,Math.min(100,100*(1-dleft(p.left)/(p.total*30.44))));
+let quiet=false;
+function tick(){
+  if(S.over)return;
+  S.dc=(S.dc||0)+1;S.day=(S.day||1)+1;
+  if(S.day>dim(S.m)){S.day=1;monthTick();return}
+  if(!quiet&&typeof tickHud==='function')tickHud();
+}
+function skipMonth(){quiet=true;try{let n=0;do{tick();n++}while(S.day!==1&&!S.over&&n<40)}finally{quiet=false}}
+
+const OFFICE=['Гараж','Съёмная комната','Небольшой офис','Этаж в бизнес-центре','Кампус','Башня','Квартал студий','Штаб-квартира','Корпорация'];
+const UPMAX=k=>k==='off'?8:5;
+const maxDevs=()=>12+4*(S.up.off||0);
+function bump(k){S.st=S.st||{};S.st[k]=(S.st[k]||0)+1}
+
+
+/* ===== Achievements (generated ladders) ===== */
+const ACHCAT={a1:'Консоли',a2:'Консоли',a3:'Деньги',a4:'Фанаты',a5:'Фанаты',a6:'Оценки',a7:'Игры',a8:'Продажи',a9:'Команда',b1:'Годы',b2:'Годы',b3:'Студия',c1:'Наука'};
+ACH.forEach(a=>{a.c=ACHCAT[a.id]||'Прочее'});
+const A=(c,id,n,d,f)=>ACH.push({id,c,n,d,f});
+const ownG=()=>S.games.filter(g=>!g.third);
+const ladder=(c,p,th,names,desc,val)=>th.forEach((t,i)=>A(c,p+i,names[i],desc(t),()=>val()>=t));
+const lv=(k)=>S.up[k]||0;
+const nres=()=>Object.keys(S.res).length;
+const nawd=()=>S.awards.filter(a=>a.me).length;
+const stn=k=>(S.st&&S.st[k])||0;
+
+ladder('Консоли','k',[2,4,5,7,10,15,20,30],['Дубль','Квартет','Пятёрка','Семейство','Десяток','Конвейер','Империя линеек','Музей консолей'],t=>t+' консолей в вашей линейке',()=>S.cons.length);
+ladder('Продажи','s',[1e4,5e4,1e5,5e5,2e6,5e6,1e7,2.5e7,5e7,1e8,2.5e8,5e8,1e9],
+  ['Первые тысячи','Пошло дело','Сто тысяч','Полмиллиона','Два миллиона','Пять миллионов','Десять миллионов','В каждом доме','Полсотни миллионов','Сто миллионов','Четверть миллиарда','Полмиллиарда','Миллиард'],
+  t=>'Продать '+fmt(t)+' консолей',sold);
+ladder('Продажи','h',[1e5,1e6,5e6,1e7,5e7,1e8],['Хит сезона','Народная любимица','Бестселлер','Икона','Рекордсмен','Всемирный стандарт'],
+  t=>'Продать '+fmt(t)+' штук одной консоли',()=>Math.max(0,...S.cons.map(c=>c.sold)));
+ladder('Деньги','m',[1e5,2.5e5,5e5,2e6,5e6,1e7,2.5e7,5e7,1e8,5e8,1e9,1e10],
+  ['Копилка','Подушка безопасности','Полмиллиона','Два миллиона','Пять миллионов на счету','Десятка','Крупный игрок','Полсотни','Сотня миллионов','Полмиллиарда в банке','Миллиардер','Десять миллиардов'],
+  t=>'Накопить '+money(t),()=>S.cash);
+ladder('Фанаты','f',[100,500,2500,5000,25000,5e4,1e5,2.5e5,5e5,1e6],
+  ['Первые поклонники','Своя компания','Фанатский чат','Толпа у магазина','Клуб на стадионе','Полсотни тысяч','Сто тысяч голосов','Четверть миллиона','Полмиллиона','Миллион фанатов'],
+  t=>fmt(t)+' фанатов',()=>S.fans);
+ladder('Игры','g',[1,3,5,10,20,30,50,75,100,150,200],
+  ['Дебют','Трилогия','Пятёрочка','Десяток игр','Двадцать проектов','Тридцать проектов','Полсотни игр','Библиотека','Сотня','Студия-конвейер','Игровая энциклопедия'],
+  t=>'Выпустить игр: '+t,()=>ownG().length);
+ladder('Игры','e',[3,5,10,20,50],['Тройка эксклюзивов','Пять эксклюзивов','Десять эксклюзивов','Двадцать эксклюзивов','Эксклюзивный магнат'],t=>'Выпустить эксклюзивов: '+t,()=>S.games.filter(g=>g.ex).length);
+ladder('Оценки','q8',[1,5,10,25,50],['Хорошая игра','Пять хороших','Десяток хитов','Золотая серия','Мастер жанра'],t=>'Игр с оценкой 8+: '+t,()=>ownG().filter(g=>g.q>=80).length);
+ladder('Оценки','q9',[3,10,25],['Три шедевра','Десять шедевров','Галерея шедевров'],t=>'Игр с оценкой 9+: '+t,()=>ownG().filter(g=>g.q>=90).length);
+A('Оценки','q98','Идеал','Игра с оценкой 9,8',()=>ownG().some(g=>g.q>=98));
+A('Оценки','q3','Провал','Выпустить игру с оценкой ниже 3',()=>ownG().some(g=>g.q<30));
+ladder('Годы','y',[1990,1995,2005,2010,2015,2020,2030,2050,2075,2150,2200],
+  ['Начало девяностых','Середина девяностых','Нулевые','Десятые','Середина десятых','Двадцатые','Тридцатые','Полвека у руля','Три четверти века','Бессмертная студия','Сквозь века'],
+  t=>'Дожить до '+t+' года',yr);
+ladder('Команда','d',[2,3,5,8,10],['Вдвоём','Троица','Пятёрка разработчиков','Целый отдел','Десять человек'],t=>'Разработчиков в команде: '+t,()=>S.devs);
+ladder('Команда','dx',[16,20,24,32,44],['Большой коллектив','Двадцатка','Две дюжины','Три десятка','Полный штат'],t=>'Разработчиков в команде: '+t,()=>S.devs);
+ladder('Команда','hr',[10,25,50],['Рекрутер','Кадровик','Директор по персоналу'],t=>'Нанять сотрудников: '+t,()=>stn('hires'));
+UPS.forEach(u=>{
+  A('Студия','u1'+u.k,'Открыть: '+u.n,'Улучшить «'+u.n+'» до 1 уровня',()=>lv(u.k)>=1);
+  A('Студия','u2'+u.k,u.n+': максимум','Довести «'+u.n+'» до последнего уровня',()=>lv(u.k)>=UPMAX(u.k));
+});
+ladder('Студия','of',[3,5],['Свой офис','Целый этаж'],t=>'Офис до уровня '+t,()=>lv('off'));
+ladder('Студия','us',[10,20,30],['Вложения','Серьёзные вложения','Инвестор в себя'],t=>'Сумма уровней улучшений: '+t,()=>UPS.reduce((a,u)=>a+lv(u.k),0));
+ladder('Наука','r',[5,10,15,30,50,75,100,150],['Любознательный','Лаборант','Стажёр-учёный','Кандидат наук','Профессор','Академик','Нобелевка','Хранитель знаний'],t=>'Изучено технологий и навыков: '+t,nres);
+TECH.forEach(t=>A('Наука','t'+t.k,'Навык: '+t.n,'Изучить «'+t.n+'»',()=>!!S.res[t.k]));
+A('Наука','tall','Мастер навыков','Изучить все навыки студии',()=>TECH.every(t=>S.res[t.k]));
+ladder('Награды','w',[1,3,5,10,20],['Консоль года','Хет-трик','Пять статуэток','Десять побед','Зал славы'],t=>'Побед в «Консоль года»: '+t,nawd);
+A('Награды','wn','Постоянный номинант','Дожить до 10 церемоний',()=>S.awards.length>=10);
+ladder('Финансы','l',[1,3,10],['В долг','Привычка занимать','Кредитный рекордсмен'],t=>'Взять кредит раз: '+t,()=>stn('loans'));
+ladder('Финансы','lr',[1,5],['Вернул долг','Чистая кредитная история'],t=>'Погасить кредит раз: '+t,()=>stn('repaid'));
+ladder('События','x',[1,5,10,25],['Первый стенд','Постоянный участник','Звезда выставки','Хозяин павильона'],t=>'Участий в выставке: '+t,()=>stn('expo'));
+ladder('События','ca',[1,10,50],['Первая реклама','Рекламная кампания','Король билбордов'],t=>'Рекламных кампаний: '+t,()=>stn('camps'));
+ladder('События','co',[1,5,15],['Подпись','Партнёр издателей','Любимец издателей'],t=>'Подписать контрактов: '+t,()=>stn('signed'));
+ladder('Платформа','tp',[1,10,50,200,1000],['Первый союзник','Экосистема','Платформа разработчиков','Золотая жила','Тысяча игр'],t=>'Игр от сторонних студий: '+t,()=>S.tp.n);
+ladder('Платформа','tr',[1e5,1e6,1e7],['Роялти пошли','Миллион роялти','Рантье'],t=>'Роялти от сторонних игр: '+money(t),()=>S.tp.rev);
+GENRES.forEach((g,i)=>{
+  A('Жанры','gn'+i,g.n+': новичок','Выпустить игру жанра «'+g.n+'»',()=>ownG().some(x=>x.genre===i));
+  A('Жанры','ge'+i,g.n+': эксперт','Выпустить 5 игр жанра «'+g.n+'»',()=>ownG().filter(x=>x.genre===i).length>=5);
+});
+TIERS.slice(1).forEach((t,i)=>A('Известность','tz'+i,t[1],'Достичь звания «'+t[1]+'»',()=>S.fans>=t[0]));
+
+/* ================= UI ================= */
+let ui={sub:{c:'my',g:'dev',w:'top',s:'team'},sheet:null,toasts:[],tid:1};
+const ICON={
+ home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/>',
+ pad:'<rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7 10.5v4M5 12.5h4"/><circle cx="15.5" cy="11.5" r=".7"/><circle cx="18" cy="13.5" r=".7"/>',
+ disc:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3a9 9 0 0 1 9 9"/>',
+ globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+ studio:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+ pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="M7 4.5l12 7.5-12 7.5z"/>',ff:'<path d="M3 5l8 7-8 7zM12 5l8 7-8 7z"/>',next:'<path d="M5 5l9 7-9 7zM19 5v14"/>',
+ menu:'<path d="M4 7h16M4 12h16M4 17h10"/>',
+ bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+ star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+ users:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M16 5a3 3 0 0 1 0 6M18 14.8c1.8.7 3 2.3 3 5.2"/>',
+ arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',chev:'<path d="M9 6l6 6-6 6"/>'
+};
+const ic=(n,s=22)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+const ERAS=[[1988,'8-битная эра'],[1993,'16-битная эра'],[1998,'Эра 3D'],[2002,'Эра дисков'],[2006,'HD-эра'],[2013,'Эра онлайна'],[2020,'Эра 4K'],[1e9,'Эра будущего']];
+const eraName=()=>ERAS.find(e=>yr()<e[0])[1];
+const meter=(p,c='')=>`<div class="meter ${c}"><i style="width:${Math.max(0,Math.min(100,p))}%"></i></div>`;
+const scc=q=>q>=70?'good':q<50?'bad':'';
+const tierOf=()=>{let i=0;TIERS.forEach((t,k)=>{if(S.fans>=t[0])i=k});return i};
+const canRes=()=>CAT.some(c=>c.items.some((it,i)=>it.y<=yr()&&!isRes(c.k,i)&&S.br>=bcost(i)))||TECH.some(t=>!S.res[t.k]&&S.br>=t.c);
+const effCost=c=>c.cost*costMul();
+
+/* ---- sound, haptics, toasts ---- */
+let AC;
+function sfx(k){
+  if(!S||!S.set||!S.set.snd)return;
+  try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    const q={tap:[[520,.04]],ok:[[660,.07],[880,.09]],win:[[523,.08],[659,.08],[784,.08],[1047,.18]],bad:[[220,.14],[165,.22]]}[k]||[];
+    let t=AC.currentTime;
+    q.forEach(([f,d])=>{const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d);t+=d});
+  }catch(e){}
+}
+function vib(ms){try{if(S&&S.set&&S.set.vib&&navigator.vibrate)navigator.vibrate(ms)}catch(e){}}
+function toast(t){
+  const id=ui.tid++;ui.toasts.push({id,t});if(ui.toasts.length>3)ui.toasts.shift();
+  const el=$('#toasts');if(el)el.innerHTML=ui.toasts.map(x=>`<div class="toast">${x.t}</div>`).join('');
+  setTimeout(()=>{ui.toasts=ui.toasts.filter(x=>x.id!==id);const e=$('#toasts');if(e)e.innerHTML=ui.toasts.map(x=>`<div class="toast">${x.t}</div>`).join('')},3600);
+  const w=/🏆|Консоль года|Победа/.test(t);
+  sfx(w?'win':/обанкрот|брак|Брак|критик/.test(t)?'bad':'ok');vib(w?[30,40,30]:20);
+}
+
+/* ---- procedural console art ---- */
+const BODY=['#8a90a2','#2c5bff','#1c2033','#c8cedb','#d9a93b'];
+function art(d){
+  const des=d.des||0, col=BODY[des]||`hsl(${(des*53)%360} 58% 52%)`;
+  const w=150+Math.min(8,d.cpu)*6, x=120-w/2, r=des>=3?26:10, m=d.media||0;
+  const slot=m<=1?'<rect x="102" y="14" width="36" height="30" rx="4" fill="#363b52"/><rect x="106" y="18" width="28" height="13" rx="2" fill="#ff5a2c"/>'
+    :m<=4?'<circle cx="120" cy="44" r="17" fill="#e1e5f1"/><circle cx="120" cy="44" r="5" fill="#6a728c"/>'
+    :'<rect x="92" y="40" width="56" height="5" rx="2.5" fill="#10142a"/>';
+  const bar=(v,y)=>`<rect x="${x+16}" y="${y}" width="${Math.min(60,10+v*6)}" height="5" rx="2.5" fill="#fff" opacity=".85"/>`;
+  const n=Math.min(6,2+(d.ctl||0));
+  let pad;
+  if((d.ctl||0)===0)pad='<circle cx="120" cy="117" r="7" fill="#2a2f45"/><path d="M120 117l12-11" stroke="#2a2f45" stroke-width="4" stroke-linecap="round"/>';
+  else{let b='';for(let k=0;k<n;k++)b+=`<circle cx="${112+(k%3)*9}" cy="${112+Math.floor(k/3)*9}" r="3" fill="${k%2?'#ff5a2c':'#e1e5f1'}"/>`;
+    pad=`<rect x="76" y="102" width="88" height="22" rx="11" fill="#2a2f45"/><path d="M92 107v12M86 113h12" stroke="#e1e5f1" stroke-width="3" stroke-linecap="round"/>${b}`}
+  return `<svg class="art" viewBox="0 0 240 130" role="img" aria-label="Консоль «${d.name||''}»"><rect x="${x}" y="46" width="${w}" height="46" rx="${r}" fill="${col}"/><rect x="${x}" y="82" width="${w}" height="10" rx="${Math.min(r,5)}" fill="#000" opacity=".16"/>${slot}${bar(d.cpu||0,56)}${bar(d.gpu||0,65)}${bar(d.ram||0,74)}<circle cx="${x+w-16}" cy="58" r="3.5" fill="#3fd69a"/>${pad}</svg>`;
+}
+
+/* ---- charts ---- */
+function spark(h,hgt=64){
+  if(!h||h.length<2)return `<p class="note">График появится через пару месяцев.</p>`;
+  const mn=Math.min(...h),mx=Math.max(...h),r=mx-mn||1,pt=h.map((v,i)=>[(i*300/(h.length-1)),hgt-6-(hgt-12)*(v-mn)/r]);
+  const ln=pt.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' '),e=pt[pt.length-1];
+  return `<svg viewBox="0 0 300 ${hgt}" width="100%" style="display:block" aria-hidden="true"><polygon points="0,${hgt} ${ln} 300,${hgt}" fill="currentColor" opacity=".16"/><polyline fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" points="${ln}"/><circle cx="${e[0]}" cy="${e[1].toFixed(1)}" r="4.5" fill="currentColor"/></svg>`;
+}
+
+/* ---- forecast & advice ---- */
+function forecast(d){
+  const c={power:power(d),mp:mktPrice(d),price:d.price,ap:appeal(d)};
+  const at=Math.min(1.5,Math.max(.25,c.power/expected())),pf=Math.min(2.2,Math.pow(c.mp/c.price,1.4)),gf=.4+Math.min(1.4,3*.12)*(.6+65/150);
+  return Math.floor(800*Math.pow(at,1.5)*pf*gf*c.ap*(1+Math.min(S.fans,9000)/3000)*DIFF[S.diff].sale*1.05*(1+.08*S.up.mk));
+}
+function advise(){
+  const act=S.cons.filter(c=>!c.off);
+  if(!S.cons.length&&!S.rd)return{t:'Соберите первую консоль',d:'Выберите детали и цену, затем запустите разработку.',tab:'c',sub:'new',b:'Собрать'};
+  if(!S.cons.length)return{t:'Консоль в разработке',d:'До релиза '+dleft(S.rd.left)+' дн. Включите ×3, чтобы быстрее.'};
+  if(S.cash<15000&&S.diff!==3)return{t:'Деньги на исходе',d:'Возьмите кредит или запустите рекламу консоли.',tab:'s',sub:'fin',b:'Финансы'};
+  if(S.offers.length)return{t:'Есть контракт на эксклюзив',d:S.offers[0].name+' · оценка '+(S.offers[0].q/10).toFixed(1),tab:'g',sub:'con',b:'Смотреть'};
+  if(act.length&&S.proj.length<Math.ceil(S.devs/2)&&S.cash>=9000)return{t:'Разработчики свободны',d:'Игры продают консоли. Запустите новую.',tab:'g',sub:'dev',b:'Новая игра'};
+  if(canRes())return{t:'Мозги простаивают',d:'Изучите новую технологию для следующей консоли.',tab:'s',sub:'lab',b:'В лабораторию'};
+  if(act.length&&Math.max(...act.map(c=>c.power))/expected()<.8&&!S.rd)return{t:'Консоли устаревают',d:'Соберите новое поколение, пока спрос не упал.',tab:'c',sub:'new',b:'Собрать'};
+  return{t:'Всё идёт по плану',d:'Следите за трендом рынка и продажами.'};
+}
+
+/* ---- chrome: top bar, rail ---- */
+const MG=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const dlabel=()=>`${S.day} ${MG[S.m%12]} ${yr()}`;
+const lbl=l=>l.d?`${l.d} ${MG[l.m%12]} ${START+Math.floor(l.m/12)}`:label(l.m);
+const pg=(s,b,c='')=>`<div class="page">${s}<div class="cols ${c}">${b}</div></div>`;
+const toTop=()=>{const m=$('#main');if(m)m.scrollTop=0};
+function HEADL(){
+  return `<button class="iconbtn" data-a="menu" aria-label="Меню">${ic('menu')}</button>
+  <div class="t-date"><b id="dl">${dlabel()}</b><span id="dc">${eraName()} · день ${fmt(S.dc)}</span></div>
+  <div class="strip"><span class="pill" title="Мозги">${ic('bulb',14)}${fmt(S.br)}</span><span class="pill" title="Фанаты">${ic('star',14)}${fmt(S.fans)}</span><span class="pill" title="Разработчики">${ic('users',14)}${S.devs}</span></div>
+  <div class="t-cash"><b class="${S.cash<0?'neg':''}">${money(S.cash)}</b><span>${S.net>=0?'+':''}${money(S.net)} / мес.</span></div>`;
+}
+function TP(){
+  const sp=[[0,'pause','Пауза'],[1,'play','Скорость ×1'],[2,'ff','Скорость ×3']];
+  if(S.dev)sp.push([3,'ff','Скорость ×15']);
+  return sp.map(s=>`<button class="${S.speed===s[0]?'on':''}" data-a="speed" data-v="${s[0]}" aria-label="${s[2]}">${ic(s[1],20)}</button>`).join('')+(S.diff===3?`<button class="skip" data-a="next" aria-label="Пропустить месяц">${ic('next',16)}мес.</button>`:'');
+}
+function tickHud(){const a=$('#dl'),b=$('#dc');if(a)a.textContent=dlabel();if(b)b.textContent=eraName()+' · день '+fmt(S.dc)}
+function RAIL(){
+  const tabs=[['h','home','Главная'],['c','pad','Консоли'],['g','disc','Игры'],['w','globe','Мир'],['s','studio','Студия']];
+  const bd={g:S.offers.length,s:canRes()?1:0};
+  return tabs.map(t=>`<button class="${S.tab===t[0]?'on':''}" data-a="tab" data-v="${t[0]}">${ic(t[1],22)}${t[2]}${bd[t[0]]?`<i>${bd[t[0]]}</i>`:''}</button>`).join('');
+}
+const seg=items=>`<div class="seg" role="tablist">${items.map(([k,t])=>`<button role="tab" class="${ui.sub[S.tab]===k?'on':''}" data-a="sub" data-v="${k}">${t}</button>`).join('')}</div>`;
+
+/* ---- HOME ---- */
+function vH(){
+  const a=advise(),sand=S.diff===3;
+  const busy=[];
+  if(S.rd)busy.push(['Консоль',S.rd.name,dleft(S.rd.left),pdays(S.rd)]);
+  S.proj.forEach(p=>busy.push(['Игра',p.name,dleft(p.left),pdays(p)]));
+  S.cprj.forEach(p=>busy.push(['Эксклюзив',p.name,dleft(p.left),pdays(p)]));
+  const nx=REAL.filter(r=>r[1]>yr()).sort((x,y)=>x[1]-y[1])[0],mo=S.m%12,toJan=(12-mo)%12||12,toJun=(5-mo+12)%12||12;
+  return `<div class="page"><div class="cols">
+  <div class="hero"><span class="lab">${sand?'Песочница · продано консолей':'Продано консолей'}</span><big>${fmt(sold())}</big><div style="color:var(--accent);margin-top:8px">${spark(S.hist,70)}</div></div>
+  <div class="advice"><div style="flex:1;min-width:0"><h3>${a.t}</h3><p>${a.d}</p></div>${a.b?`<button class="btn sm" data-a="go" data-v="${a.tab}:${a.sub}">${a.b}</button>`:''}</div>
+  <div class="card"><div class="head"><h3>Сейчас в работе</h3><span class="tag">${busy.length}</span></div>${busy.length?`<div class="list">${busy.map(b=>`<div class="li" style="display:block"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${b[1]}</b><span class="tag">${b[0]} · ${b[2]} дн.</span></div><div style="margin-top:8px">${meter(b[3],'blue')}</div></div>`).join('')}</div>`:'<p class="note" style="margin:0">Ничего не разрабатывается.</p>'}</div>
+  <div class="card"><div class="head"><h3>Рынок</h3><span class="tag hot">тренд</span></div><div class="grid">
+    <div><span class="lab">Жанр месяца</span><b>${GENRES[S.hot.g].n}</b></div><div><span class="lab">Ещё</span><b>${S.hot.left} мес.</b></div>
+    <div><span class="lab">Сезон</span><b class="${SEA[mo]>=1.1?'good':SEA[mo]<.9?'bad':''}">×${SEA[mo]}</b></div><div><span class="lab">Выставка</span><b>${toJun} мес.</b></div>
+    <div><span class="lab">Известность</span><b>${TIERS[tierOf()][1]}</b></div><div><span class="lab">Церемония</span><b>${toJan} мес.</b></div>${nx?`<div><span class="lab">Скоро</span><b>${nx[0]}, ${nx[1]}</b></div>`:''}</div></div>
+  <div class="card"><div class="head"><h3>Новости студии</h3></div><div class="list">${S.log.slice(0,4).map(l=>`<div class="li"><div>${l.t}<small>${lbl(l)}</small></div></div>`).join('')}</div></div></div></div>`;
+}
+
+/* ---- CONSOLES ---- */
+function vC(){
+  return pg(seg([['my','Мои · '+S.cons.length],['new','Собрать']]),ui.sub.c==='new'?vCnew():vCmy(),ui.sub.c==='new'?'build':'');
+}
+function vCmy(){
+  if(!S.cons.length)return `<div class="card"><h3>Пока нет консолей</h3><p class="note">Соберите первую во вкладке «Собрать».</p><div style="margin-top:12px"><button class="btn go wide" data-a="go" data-v="c:new">Собрать консоль</button></div></div>`;
+  return [...S.cons].reverse().map(c=>{
+    const n=S.games.filter(g=>g.con===c.id).length,mg=c.price-effCost(c),p=c.off?0:c.peak?Math.round(100*c.last/c.peak):0;
+    return `<div class="card">${art(c)}
+    <div class="head" style="margin:12px 0 4px"><h3>${c.name}</h3><span>${c.off?'<span class="tag hot">снята</span> ':''}<span class="tag">${label(c.launch)}</span></span></div>
+    <div class="grid" style="margin:10px 0"><div><span class="lab">В месяц</span><b>${fmt(c.last)}</b></div><div><span class="lab">Продано</span><b>${fmt(c.sold)}</b></div>
+      <div><span class="lab">Цена</span><b>${money(c.price)}</b></div><div><span class="lab">Маржа</span><b class="${mg<0?'bad':'good'}">${money(mg)}</b></div><div><span class="lab">Игр</span><b>${n}</b></div><div><span class="lab">Популярность</span><b>${p}%</b></div></div>
+    ${meter(p,'good')}<div style="color:var(--blue);margin:10px 0">${spark(c.h,48)}</div>
+    <div class="row" style="align-items:center"><div class="step"><button class="btn sm" data-a="cp" data-v="${c.id}:-10" aria-label="Снизить цену">−</button><b style="min-width:54px;font-size:14px">${c.price}</b><button class="btn sm" data-a="cp" data-v="${c.id}:10" aria-label="Повысить цену">+</button></div>
+    <button class="btn sm grow" data-a="camp" data-v="${c.id}" ${c.off||S.camp[c.id]>0||S.cash<15000?'disabled':''}>${S.camp[c.id]>0?'Реклама ещё '+S.camp[c.id]+' мес.':'Реклама 15 000 $'}</button>
+    <button class="btn sm line" data-a="${c.off?'on':'off'}" data-v="${c.id}" ${c.off&&S.cash<5000?'disabled':''}>${c.off?'Вернуть 5 000 $':'Снять'}</button></div></div>`;
+  }).join('');
+}
+function vCnew(){
+  const d=S.cd;
+  if(S.rd){const p=pdays(S.rd);
+    return `<div class="card a-art">${art(S.rd)}<div class="head" style="margin:12px 0 6px"><h3>${S.rd.name}</h3><span class="tag hot">R&amp;D</span></div><p class="note" style="margin:0 0 10px">До запуска ${dleft(S.rd.left)} дн.</p>${meter(p,'blue')}</div>`}
+  const cost=rdCost(d),uc=unitCost(d),mp=mktPrice(d),ep=Math.round(100*power(d)/expected()),fc=forecast(d),mg=d.price-uc*(1-.06*S.up.fab-(S.res.t2?.08:0));
+  return `<div class="card a-art">${art(d)}<div class="head" style="margin:12px 0 0"><h3>${d.name}</h3><button class="btn sm" data-a="cname">Другое имя</button></div></div>
+  <div class="card a-parts"><div class="list">${CAT.map(c=>`<button class="part" data-a="sheet" data-v="${c.k}"><span class="k">${c.n}</span><span class="n">${itm(c.k,d[c.k]).n}</span>${ic('chev',18)}</button>`).join('')}</div></div>
+  <div class="card a-sum"><div class="head"><h3>Итог</h3></div>
+    <span class="lab">Мощность для эпохи · ${ep}%</span><div style="margin:6px 0 14px">${meter(ep,ep>=100?'good':ep<75?'':'blue')}</div>
+    <div class="grid"><div><span class="lab">Прогноз</span><b>≈ ${fmt(fc)} шт./мес.</b></div><div><span class="lab">Срок</span><b>${rdMonths(d)} мес.</b></div>
+    <div><span class="lab">Разработка</span><b>${money(cost)}</b></div><div><span class="lab">Себестоимость</span><b>${money(uc)}</b></div></div>
+    <div class="li" style="margin-top:6px"><div>Розничная цена<small>рыночная: ${money(mp)} · маржа <span class="${mg<0?'bad':'good'}">${money(mg)}</span></small></div>
+      <div class="step"><button class="btn sm" data-a="price" data-v="-10" aria-label="Снизить цену">−</button><b style="min-width:56px;font-size:15px">${d.price}</b><button class="btn sm" data-a="price" data-v="10" aria-label="Повысить цену">+</button></div></div>
+    <div class="row" style="margin-top:12px"><button class="btn go grow" data-a="rd" ${S.cash<cost?'disabled':''}>Начать разработку</button><button class="btn" data-a="mkt">Рыночная цена</button></div>
+    ${S.cash<cost?'<p class="note">Не хватает денег. Выберите детали попроще.</p>':''}<p class="note">Прогноз считается для консоли с тремя играми средней оценки.</p></div>`;
+}
+function SHEET(){
+  const c=CAT.find(x=>x.k===ui.sheet);if(!c)return '';
+  const y=yr(),last=c.items.reduce((a,it,i)=>it.y<=y?i:a,0),d=S.cd;
+  const rows=c.items.map((it,i)=>{
+    if(i>last+1)return '';
+    const lock=it.y>y,rs=isRes(c.k,i);
+    return `<div class="optrow"><button class="opt ${d[c.k]===i?'on':''}" data-a="part" data-v="${c.k}:${i}" ${lock||!rs?'disabled':''}><span class="t">${it.n}<small>${lock?'с '+it.y+' г.':fmt(it.uc)+' $ в консоль · R&amp;D '+fmt(it.rd)}</small></span></button>${!lock&&!rs?`<button class="btn" data-a="res" data-v="${c.k}:${i}" ${S.br<bcost(i)?'disabled':''} aria-label="Изучить">${ic('bulb',18)}${bcost(i)}</button>`:''}</div>`;
+  }).join('');
+  return `<div class="scrim" data-a="sheetx"><div class="sheet" role="dialog" aria-label="${c.n}"><div class="grab"></div><div class="head"><h3>${c.n}</h3><button class="btn sm" data-a="sheetx">Готово</button></div><div class="sbody">${rows}</div></div></div>`;
+}
+
+/* ---- GAMES ---- */
+function vG(){
+  return pg(seg([['dev','Студия'],['con','Контракты'+(S.offers.length?' · '+S.offers.length:'')],['lib','Каталог']]),ui.sub.g==='con'?vGcon():ui.sub.g==='lib'?vGlib():vGdev());
+}
+const projCard=(p,tag)=>`<div class="card"><div class="head" style="margin-bottom:6px"><h3>${p.name}</h3><span class="tag ${tag?'hot':''}">${tag||GENRES[p.genre].n}</span></div><p class="note" style="margin:0 0 10px">Выйдет через ${dleft(p.left)} дн.</p>${meter(pdays(p),'blue')}</div>`;
+function vGdev(){
+  const g=S.gd,lim=Math.ceil(S.devs/2),act=S.cons.filter(k=>!k.off);
+  let h=`<div class="card"><span class="lab">Тренд рынка</span><div class="head" style="margin:4px 0 0"><h3>${GENRES[S.hot.g].n}</h3><span class="tag hot">+30% · ещё ${S.hot.left} мес.</span></div></div>`;
+  if(!act.length)return h+`<div class="card"><h3>Нужна консоль</h3><p class="note">Игры выходят на консоли. Сначала выпустите консоль.</p></div>`;
+  if(g.con==null||!act.find(x=>x.id===g.con))g.con=act[0].id;
+  const c=S.cons.find(x=>x.id===g.con),sc=SCOPES[g.scope],cost=gameCost(g),b=baseQ(g,c),lo=clampQ(b-8),hi=clampQ(b+10),mo=Math.max(1,sc.mo-Math.floor((S.devs-1)/3));
+  const chips=(arr,key,cur,act2)=>`<div class="chips">${arr.map((x,i)=>`<button class="chip ${cur===i?'on':''}" data-a="${act2}" data-v="${i}">${x.n}</button>`).join('')}</div>`;
+  h+=`<div class="card"><div class="head"><h3>${g.name}</h3><button class="btn sm" data-a="gname">Другое имя</button></div>
+    <span class="lab">Жанр</span><div style="margin:6px 0 14px">${chips(GENRES,'genre',g.genre,'genre')}</div>
+    <span class="lab">Масштаб</span><div style="margin:6px 0 14px">${chips(SCOPES,'scope',g.scope,'scope')}</div>
+    <span class="lab">Реклама</span><div style="margin:6px 0 14px">${chips(MK,'mk',g.mk,'gmk')}</div>
+    <span class="lab">Консоль</span><div class="chips" style="margin:6px 0 14px">${act.map(k=>`<button class="chip ${g.con===k.id?'on':''}" data-a="gcon" data-v="${k.id}">${k.name}</button>`).join('')}</div>
+    <div class="grid"><div><span class="lab">Бюджет</span><b>${money(cost)}</b></div><div><span class="lab">Срок</span><b>${mo} мес.</b></div><div><span class="lab">Прогноз оценки</span><b>${(lo/10).toFixed(1)}–${(hi/10).toFixed(1)}</b></div><div><span class="lab">Проекты</span><b>${S.proj.length}/${lim}</b></div></div>
+    ${g.genre===S.hot.g?'<p class="note good">Жанр в тренде: продажи выше на 30%.</p>':''}
+    <p class="note">Жанру нужны разные детали консоли, а большим играм нужен ёмкий носитель.</p>
+    <div style="margin-top:12px"><button class="btn go wide" data-a="mkgame" ${S.cash<cost||S.proj.length>=lim?'disabled':''}>Начать разработку</button></div>
+    ${S.proj.length>=lim?'<p class="note">Все разработчики заняты. Наймите ещё одного во вкладке «Студия».</p>':''}</div>`;
+  return h+S.proj.map(p=>projCard(p)).join('');
+}
+function vGcon(){
+  let h='';
+  if(!S.offers.length&&!S.cprj.length)h+=`<div class="card"><h3>Предложений нет</h3><p class="note">Издатели пишут, когда у вас есть консоль и фанаты.</p></div>`;
+  S.offers.forEach(o=>{const k=S.cons.find(z=>z.id===o.con);h+=`<div class="card"><div class="head" style="margin-bottom:4px"><h3>${o.name}</h3><span class="tag hot">эксклюзив</span></div><p class="note" style="margin:0 0 10px">${o.studio} · ${GENRES[o.genre].n} · для ${k?k.name:''}</p>
+    <div class="grid"><div><span class="lab">Оценка</span><b>${(o.q/10).toFixed(1)}</b></div><div><span class="lab">Плата</span><b>${money(o.cost)}</b></div><div><span class="lab">Срок</span><b>${o.mo} мес.</b></div><div><span class="lab">Предложение</span><b>${o.exp} мес.</b></div></div>
+    <div class="row" style="margin-top:12px"><button class="btn go grow" data-a="acc" data-v="${o.id}" ${S.cash<o.cost?'disabled':''}>Подписать</button><button class="btn line" data-a="dec" data-v="${o.id}">Отказ</button></div></div>`});
+  h+=S.cprj.map(p=>projCard(p,'эксклюзив')).join('');
+  if(S.tp.n)h+=`<div class="card"><h3>Сторонние студии</h3><div class="grid" style="margin-top:10px"><div><span class="lab">Игр вышло</span><b>${fmt(S.tp.n)}</b></div><div><span class="lab">Роялти</span><b class="good">${money(S.tp.rev)}</b></div></div><p class="note">Чем больше консолей продано, тем чаще студии делают для неё игры.</p></div>`;
+  return h;
+}
+function vGlib(){
+  const own=S.games.filter(x=>!x.third).reverse();
+  if(!own.length)return `<div class="card"><h3>Пока пусто</h3><p class="note">Выпущенные игры появятся здесь.</p></div>`;
+  return `<div class="card"><div class="list">${own.map(x=>{const k=S.cons.find(z=>z.id===x.con);return `<div class="li"><div style="display:flex;gap:12px;align-items:center"><span class="score ${scc(x.q)}">${(x.q/10).toFixed(1)}</span><div><b>${x.name}</b>${x.ex?' <span class="tag hot">эксклюзив</span>':''}<small>${GENRES[x.genre].n} · ${k?k.name:''} · ${label(x.rel)}</small></div></div><div class="v">${fmt(x.units)}<small>${money(x.rev)}</small></div></div>`}).join('')}</div></div>`;
+}
+
+/* ---- WORLD ---- */
+function vW(){
+  return pg(seg([['top','Рейтинги'],['awd','Награды'],['tl','Хроника']]),ui.sub.w==='awd'?vWawd():ui.sub.w==='tl'?vWtl():vWtop());
+}
+function vWtop(){
+  const A=REAL.filter(r=>r[1]<=yr()).map(r=>({n:r[0],y:r[1],u:r[2]*1e6})).concat(S.cons.map(c=>({n:c.name,y:START+Math.floor(c.launch/12),u:c.sold,me:1}))).sort((a,b)=>b.u-a.u);
+  const L=A.slice(0,10),mi=A.findIndex(r=>r.me);if(mi>=10)L.push({...A[mi],rank:mi+1});const mx=L[0]?L[0].u||1:1;
+  const R=RIV.map(r=>({n:r[0],v:r[1]*Math.pow(1+S.m*r[2]/50,1.5)})).concat([{n:'Вы',v:Math.max(0,S.cash)+sold()*20,me:1}]).sort((a,b)=>b.v-a.v);
+  const G=S.games.filter(g=>!g.third).sort((a,b)=>b.units-a.units).slice(0,5),gm=G[0]?G[0].units||1:1;
+  return `<div class="card"><div class="head"><h3>Мировой топ консолей</h3></div>${L.length?`<div class="list">${L.map((r,i)=>`<div class="li" style="display:block"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span>${r.rank||i+1}. ${r.me?'<b>'+r.n+' (вы)</b>':r.n} <small style="display:inline">${r.y}</small></span><span class="mono" style="font-weight:600;font-size:13px">${r.u>=1e6?(r.u/1e6).toFixed(1)+' млн':fmt(r.u)}</span></div><div style="margin-top:6px">${meter(Math.max(1,100*r.u/mx),r.me?'':'blue')}</div></div>`).join('')}</div>`:''}<p class="note">Цифры реальных консолей приблизительные. Список растёт вместе с годом игры.</p></div>
+  <div class="card"><div class="head"><h3>Рейтинг студий</h3><span class="tag">капитал + продажи</span></div><div class="list">${R.map((r,i)=>`<div class="li"><span>${i+1}. ${r.me?'<b>Вы</b>':r.n}</span><span class="v ${r.me?'good':''}">${money(r.v)}</span></div>`).join('')}</div></div>
+  <div class="card"><div class="head"><h3>Ваши лучшие игры</h3></div>${G.length?`<div class="list">${G.map((g,i)=>`<div class="li" style="display:block"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span>${i+1}. ${g.name} <small style="display:inline">оценка ${(g.q/10).toFixed(1)}</small></span><span class="mono" style="font-weight:600;font-size:13px">${fmt(g.units)}</span></div><div style="margin-top:6px">${meter(100*g.units/gm,'good')}</div></div>`).join('')}</div>`:'<p class="note" style="margin:0">Пока нет игр.</p>'}</div>`;
+}
+function vWawd(){
+  return `<div class="card"><div class="head"><h3>Консоль года</h3><span class="tag">каждый январь</span></div>${S.awards.length?`<div class="list">${[...S.awards].reverse().map(a=>`<div class="li"><div><b>${a.me?'Победа':'Второе место'} · ${a.y}</b><small>${a.n}</small></div><div class="v">${fmt(a.u)}</div></div>`).join('')}</div>`:'<p class="note" style="margin:0">Церемония пройдёт в январе. Продавайте больше консолей за год, чтобы победить.</p>'}</div>
+  <div class="card"><div class="head"><h3>Игровая выставка</h3><span class="tag">каждый июнь</span></div><p class="note" style="margin:0">Стенд на выставке даёт фанатов и рекламу для всех ваших консолей. Решение вы принимаете в июне, если у вас есть консоль.</p></div>`;
+}
+function vWtl(){
+  const all=REAL.map(r=>({n:r[0],y:r[1],real:1})).concat(S.cons.map(c=>({n:c.name,y:START+Math.floor(c.launch/12),me:1}))).sort((a,b)=>a.y-b.y);
+  return `<div class="card"><div class="head"><h3>Хроника индустрии</h3><span class="tag">${yr()}</span></div><div class="list">${all.map(r=>`<div class="li" style="${r.y>yr()?'opacity:.5':''}"><div>${r.me?'<b>'+r.n+' (вы)</b>':r.n}<small>${r.y>yr()?'ещё не вышла':'вышла'}</small></div><div class="v">${r.y}</div></div>`).join('')}</div></div>`;
+}
+
+/* ---- STUDIO ---- */
+function vS(){
+  const T=ui.sub.s;
+  return pg(seg([['team','Команда'],['lab','Наука'],['fin','Финансы'],['ach','Достижения'],['log','Журнал'],['more','Ещё']]),({team:sTeam,lab:sLab,fin:sFin,ach:sAch,log:sLog,more:sMore}[T]||sTeam)());
+}
+function sTeam(){
+  const busy=S.proj.length+S.cprj.length,mx=maxDevs(),ol=S.up.off||0,ou=UPS.find(u=>u.k==='off'),oc=ou.b*(ol+1);
+  return `<div class="card"><div class="head"><h3>Офис</h3><span class="tag hot">ур. ${ol}/${UPMAX('off')}</span></div>
+  <div class="grid"><div><span class="lab">Помещение</span><b>${OFFICE[ol]}</b></div><div><span class="lab">Мест в команде</span><b>${S.devs} / ${mx}</b></div></div>
+  <p class="note">Каждый уровень офиса даёт +4 места для разработчиков.${ol<UPMAX('off')?' Следующее помещение: «'+OFFICE[ol+1]+'», мест '+(mx+4)+'.':' Офис достиг максимума.'}</p>
+  <div class="row" style="margin-top:12px"><button class="btn go grow" data-a="up" data-v="off" ${ol>=UPMAX('off')||S.cash<oc?'disabled':''}>${ol>=UPMAX('off')?'Максимум':'Расширить офис · '+money(oc)}</button></div></div>
+  <div class="card"><div class="head"><h3>Команда</h3><span class="tag">${S.devs} / ${mx}</span></div><div class="grid"><div><span class="lab">Расходы в мес.</span><b>${money(salary())}</b></div><div><span class="lab">Прошлый месяц</span><b class="${S.net<0?'bad':'good'}">${money(S.net)}</b></div></div>
+  <p class="note">Каждый разработчик повышает качество игр (после 12-го эффект слабее), а на каждых двоих приходится один параллельный проект.</p>
+  <div class="row" style="margin-top:12px"><button class="btn go grow" data-a="hire" ${S.devs>=mx||S.cash<8000?'disabled':''}>${S.devs>=mx?'Нет мест, расширьте офис':'Нанять за '+money(8000)}</button><button class="btn line" data-a="fire" ${S.devs<=1||busy>=Math.ceil((S.devs-1)/2)?'disabled':''}>Уволить</button></div></div>
+  <div class="card"><div class="head"><h3>Улучшения</h3></div><div class="list">${UPS.filter(u=>u.k!=='off').map(u=>{const l=S.up[u.k],c=u.b*(l+1),M=UPMAX(u.k);return `<div class="li"><div><b>${u.n}</b> <span class="tag">ур. ${l}/${M}</span><small>${u.d}</small></div><button class="btn sm ${l>=M?'':'go'}" data-a="up" data-v="${u.k}" ${l>=M||S.cash<c?'disabled':''}>${l>=M?'Макс.':money(c)}</button></div>`}).join('')}</div></div>`;
+}
+function sLab(){
+  const y=yr();
+  let h=`<div class="card"><div class="grid"><div><span class="lab">Мозги</span><b>${fmt(S.br)}</b></div><div><span class="lab">Приток в мес.</span><b class="good">+${brainRate()}</b></div></div><p class="note">Мозги дают разработчики, лаборатория и удачные релизы. Деталь нужно изучить, прежде чем ставить её в консоль.</p></div>`;
+  CAT.forEach(c=>{
+    const done=c.items.filter((it,i)=>isRes(c.k,i)).length,av=c.items.map((it,i)=>[it,i]).filter(([it,i])=>it.y<=y&&!isRes(c.k,i)).slice(0,3),nx=c.items.findIndex(it=>it.y>y);
+    h+=`<div class="card"><div class="head"><h3>${c.n}</h3><span class="tag">${done}/${c.items.length}</span></div>${av.map(([it,i])=>`<button class="opt" data-a="res" data-v="${c.k}:${i}" ${S.br<bcost(i)?'disabled':''}><span class="t">${it.n}</span>${ic('bulb',18)}<b class="mono">${bcost(i)}</b></button>`).join('')}${nx>=0?`<p class="note">Следующая: «${c.items[nx].n}» с ${c.items[nx].y} г.</p>`:''}${!av.length&&nx<0?'<p class="note">Всё изучено.</p>':''}</div>`;
+  });
+  return h+`<div class="card"><div class="head"><h3>Навыки студии</h3></div><div class="list">${TECH.map(t=>`<div class="li"><div><b>${t.n}</b><small>${t.d}</small></div>${S.res[t.k]?'<span class="tag blue">изучено</span>':`<button class="btn sm go" data-a="res" data-v="${t.k}:t" ${S.br<t.c?'disabled':''}>${ic('bulb',16)}${t.c}</button>`}</div>`).join('')}</div></div>`;
+}
+function sFin(){
+  return `<div class="card"><div class="head"><h3>Деньги</h3><span class="tag">${S.hist.length} мес.</span></div><div style="color:var(--blue)">${spark(S.hist,90)}</div>
+  <div class="grid" style="margin-top:12px"><div><span class="lab">Кредит</span><b class="${S.loan?'bad':''}">${money(S.loan)}</b></div><div><span class="lab">Процент</span><b>1,5% / мес.</b></div><div><span class="lab">Продано консолей</span><b>${fmt(sold())}</b></div></div>
+  <div class="row" style="margin-top:12px"><button class="btn go grow" data-a="loan" ${S.loan>=200000?'disabled':''}>Взять 50 000 $</button><button class="btn line grow" data-a="repay" ${S.loan<=0||S.cash<50000?'disabled':''}>Погасить 50 000 $</button></div></div>`;
+}
+function sAch(){
+  const f=ui.af||'all',n=Object.keys(S.ach).length,cats=[];
+  ACH.forEach(x=>{if(!cats.includes(x.c))cats.push(x.c)});
+  const chip=(k,t)=>`<button class="chip ${f===k?'on':''}" data-a="af" data-v="${k}">${t}</button>`;
+  let h=`<div class="card"><div class="head"><h3>Достижения</h3><span class="tag hot">${n} / ${ACH.length}</span></div>${meter(100*n/ACH.length)}<p class="note">За каждое достижение вы получаете 3 мозга.</p><div class="chips" style="margin-top:10px">${chip('all','Все')}${chip('ok','Открытые')}${chip('lock','Закрытые')}</div></div>`;
+  cats.forEach(c=>{
+    const all=ACH.filter(x=>x.c===c),got=all.filter(x=>S.ach[x.id]!==undefined).length,L=all.filter(x=>f==='all'||(f==='ok')===(S.ach[x.id]!==undefined));
+    if(!L.length)return;
+    h+=`<div class="card"><div class="head"><h3>${c}</h3><span class="tag">${got}/${all.length}</span></div><div class="ach">${L.map(x=>`<div class="${S.ach[x.id]!==undefined?'ok':''}"><b>${x.n}</b>${x.d}</div>`).join('')}</div></div>`;
+  });
+  return h;
+}
+const sLog=()=>`<div class="card"><div class="list">${S.log.map(l=>`<div class="li"><div>${l.t}<small>${lbl(l)}</small></div></div>`).join('')}</div></div>`;
+function sMore(){
+  const B=(c,t)=>`<button class="btn sm" data-a="ch" data-v="${c}">${t}</button>`;
+  let h=`<div class="card"><div class="head"><h3>Настройки</h3></div><div class="list"><div class="switch"><span>Звук</span><button class="sw ${S.set.snd?'on':''}" data-a="snd" role="switch" aria-checked="${!!S.set.snd}" aria-label="Звук"></button></div><div class="switch"><span>Вибрация</span><button class="sw ${S.set.vib?'on':''}" data-a="vibt" role="switch" aria-checked="${!!S.set.vib}" aria-label="Вибрация"></button></div><div class="switch"><span>Горизонтальный режим на вертикальном экране</span><button class="sw ${S.set.rot===0?'':'on'}" data-a="rotset" role="switch" aria-checked="${S.set.rot!==0}" aria-label="Горизонтальный режим"></button></div></div></div>
+  <div class="card"><div class="head"><h3>Игра</h3></div><div class="row"><button class="btn grow" data-a="menu">Главное меню</button><button class="btn grow" data-a="io">Экспорт / импорт</button><button class="btn line grow" data-a="reset">Начать заново</button></div></div>`;
+  if(S.diff===3)h+=`<div class="card"><div class="head"><h3>Чит-меню</h3><span class="tag hot">песочница</span></div><div class="chips">${B('money','+1 млн $')}${B('brain','+1000 мозгов')}${B('fans','+10 тыс. фанатов')}${B('tech','Изучить всё')}${B('upgrade','Макс. улучшения')}${B('year1','+1 год')}${B('year','+5 лет')}${B('debt','Списать кредит')}</div>
+    <div class="row" style="margin-top:12px;flex-wrap:nowrap"><input class="in" id="cheat" placeholder="или введите код" autocomplete="off" autocapitalize="off"><button class="btn go" data-a="cheat">OK</button></div>
+    <div class="switch"><span>Режим разработчика</span><button class="sw ${S.dev?'on':''}" data-a="dev" role="switch" aria-checked="${!!S.dev}" aria-label="Режим разработчика"></button></div>${S.dev?`<div class="chips">${B('finish','Завершить проекты')}${B('offer','Новый контракт')}${B('god','Бессмертие: '+(S.god?'вкл':'выкл'))}<button class="btn sm" data-a="speed" data-v="3">×15</button>${B('sci0','Сброс науки')}</div>`:''}</div>`;
+  return h;
+}
+
+/* ---- overlays ---- */
+function MENU(){
+  const W=b=>`<div class="modal"><div>${b}</div></div>`;
+  if(menu==='io'){let b='';try{b=btoa(unescape(encodeURIComponent(localStorage.getItem(KEY)||'')))}catch(e){}return W(`<h1>Сохранение</h1><p class="sub" style="margin:0">Скопируйте код, чтобы перенести игру на другое устройство, или вставьте чужой код и нажмите «Загрузить».</p><textarea id="sv">${b}</textarea><button class="btn go wide" data-a="imp">Загрузить из поля</button><button class="btn wide" data-a="back">Назад</button>`)}
+  if(menu==='diff')return W(`<h1>Сложность</h1><div class="opts">${DIFF.map((d,i)=>`<button class="btn ${i===1?'go':''} wide" style="flex-direction:column;gap:2px;min-height:62px" data-a="start" data-v="${i}">${d.n}<small style="font:500 11px var(--mono);opacity:.75">${money(d.cash)} · расходы ×${d.exp} · спрос ×${d.sale}</small></button>`).join('')}</div><button class="btn line wide" data-a="back">Назад</button>`);
+  const hs=hasSave();
+  return W(`<span class="lab">Симулятор</span><h1>Гараж Консолей</h1><p class="sub" style="margin:0">${hs?label(S.m)+' · '+money(S.cash)+' · фанаты '+fmt(S.fans)+' · '+DIFF[S.diff].n:'Построй империю игровых приставок'}</p><button class="btn go wide" data-a="cont" ${hs?'':'disabled'}>Продолжить</button><button class="btn wide" data-a="newg">${cn?'Точно? Прогресс сотрётся':'Новая игра'}</button><button class="btn line wide" data-a="io">Экспорт / импорт</button>`);
+}
+function CER(){
+  const c=S.cer,mx=c.nom[0].u;let b;
+  if(c.step===0)b=`<span class="lab">Церемония</span><h1>Консоль года ${c.y}</h1><div class="card"><div class="list">${c.nom.map(n=>`<div class="li" style="display:block"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span>${n.me?'<b>'+n.n+' (вы)</b>':n.n}</span><span class="mono" style="font-weight:600;font-size:13px">${fmt(n.u)}</span></div><div style="margin-top:6px">${meter(100*n.u/mx,n.me?'':'blue')}</div></div>`).join('')}</div></div>`;
+  else if(c.step===1)b=`<div class="big">🏆</div><h1>${c.nom[0].n}</h1><p>${c.win?'Победа вашей студии! +20 000 $, +500 фанатов, +30 мозгов.':'Победил конкурент. Попробуйте в следующем году.'}</p><p class="sub" style="margin:0">Продано: ${fmt(c.nom[0].u)}</p>`;
+  else b=`<div class="big">🎮</div><h1>Игра года</h1>${c.game?`<h3>${c.game.n}</h3><p class="sub" style="margin:0">Оценка ${(c.game.q/10).toFixed(1)} · продано ${fmt(c.game.units)}${c.game.third?' · сторонняя студия':''}</p>`:'<p class="sub" style="margin:0">В этом году игр не выходило.</p>'}`;
+  return `<div class="modal"><div>${b}<button class="btn go wide" data-a="cer">${c.step<2?'Дальше':'Закрыть'}</button></div></div>`;
+}
+const EXPO=[['Пропустить',0,0,0,'Ничего не тратим.'],['Небольшой стенд',12000,300,3,'+300 фанатов и реклама консолей на 3 мес.'],['Большая сцена',40000,1200,6,'+1 200 фанатов, реклама консолей на 6 мес. и 10 мозгов.']];
+function EXPOV(){
+  return `<div class="modal"><div><span class="lab">Июнь ${S.expo.y}</span><h1>Игровая выставка</h1><p class="sub" style="margin:0">Журналисты и фанаты ждут новостей. Какой стенд поставим?</p><div class="opts">${EXPO.map((e,i)=>`<button class="btn ${i===2?'go':''} wide" style="flex-direction:column;gap:2px;min-height:66px" data-a="expo" data-v="${i}" ${S.cash<e[1]?'disabled':''}>${e[0]}${e[1]?' · '+money(e[1]):''}<small style="font:500 11px var(--mono);opacity:.75">${e[4]}</small></button>`).join('')}</div></div></div>`;
+}
+
+/* ---- actions, render, boot ---- */
+const UA={
+  tab:v=>{S.tab=v;toTop()},
+  sub:v=>{ui.sub[S.tab]=v},
+  go:v=>{const[t,s]=v.split(':');S.tab=t;if(s&&s!=='undefined')ui.sub[t]=s;toTop()},
+  sheet:v=>{ui.sheet=v},sheetx:()=>{ui.sheet=null},
+  af:v=>{ui.af=v},rotset:()=>{S.set.rot=S.set.rot===0?1:0},
+  snd:()=>{S.set.snd=S.set.snd?0:1},vibt:()=>{S.set.vib=S.set.vib?0:1},
+  expo:v=>{const e=EXPO[+v];if(!e||S.cash<e[1])return;S.cash-=e[1];S.fans+=e[2];if(e[3])S.cons.forEach(c=>{if(!c.off)S.camp[c.id]=Math.max(S.camp[c.id]||0,e[3])});if(+v===2)S.br+=10;S.xp=S.expo.y;S.expo=null;bump('expo');say(e[1]?'Выставка: '+e[0].toLowerCase()+'. Фанатов +'+fmt(e[2])+'.':'Выставку пропустили.')}
+};
+UA.dil=v=>{const e=DIL[S.dil-1];if(e&&e.o[+v]){e.o[+v][1]();S.dil=0;bump('dil')}};
+const _vH=vH;vH=()=>questCard()+_vH();
+function act(a,v){
+  if(UA[a]){UA[a](v);sfx('tap');save();render();return}
+  if(a==='part')ui.sheet=null;
+  act0(a,v);sfx('tap');
+}
+let lastTp='';
+function render(){
+  document.documentElement.classList.toggle('norot',S.set&&S.set.rot===0);
+  $('#hdl').innerHTML=HEADL();
+  const tk=S.speed+':'+(S.dev?1:0)+':'+S.diff;if(tk!==lastTp){$('#tp').innerHTML=TP();lastTp=tk}
+  const sb=$('#sheet .sbody'),st=sb?sb.scrollTop:0;
+  if(!(document.activeElement&&document.activeElement.id==='cheat'))$('#main').innerHTML=({h:vH,c:vC,g:vG,w:vW,s:vS}[S.tab]||vH)();
+  $('#rail').innerHTML=RAIL();
+  $('#sheet').innerHTML=ui.sheet?SHEET():'';
+  const nb=$('#sheet .sbody');if(nb)nb.scrollTop=st;
+  $('#ov').innerHTML=menu?MENU():S.cer?CER():S.expo?EXPOV():S.dil?DILV():S.over?`<div class="modal"><div><h1>Банкротство</h1><p class="sub" style="margin:0">Студия закрыта в ${label(S.m)}. Продано консолей: ${fmt(sold())}.</p><button class="btn go wide" data-a="reset">Начать заново</button></div></div>`
+    :'';
+}
+document.addEventListener('click',e=>{
+  try{if(!window.__ol&&screen.orientation&&screen.orientation.lock){window.__ol=1;screen.orientation.lock('landscape').catch(()=>{})}}catch(x){}
+  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
+  if(b.classList.contains('scrim')&&e.target!==b)return;
+  act(b.dataset.a,b.dataset.v);
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'){if(e.key==='Enter')act('cheat');return}
+  if(e.target.tagName==='TEXTAREA'||menu||e.code!=='Space')return;
+  e.preventDefault();act('speed',S.speed?0:1);
+});
+S=load();S.speed=0;render();
+</script>
+<script>if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});</script>
+</body>
+</html>
